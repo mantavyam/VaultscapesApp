@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/constants/app_strings.dart';
 
 class MainNavigation extends StatefulWidget {
   final Widget child;
@@ -10,38 +13,8 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _getCurrentIndex(context),
-        onTap: (index) => _onItemTapped(context, index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_add),
-            label: 'Collaborate',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.feedback),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-
   int _getCurrentIndex(BuildContext context) {
-    final location = ModalRoute.of(context)?.settings.name ?? '';
+    final String location = GoRouterState.of(context).uri.path;
     switch (location) {
       case '/home':
         return 0;
@@ -59,17 +32,47 @@ class _MainNavigationState extends State<MainNavigation> {
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, '/home');
+        context.go('/home');
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, '/collaborate');
+        context.go('/collaborate');
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/feedback');
+        context.go('/feedback');
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, '/profile');
+        context.go('/profile');
         break;
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: widget.child,
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _getCurrentIndex(context),
+        onTap: (index) => _onItemTapped(context, index),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: AppStrings.home,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group_add),
+            label: AppStrings.collaborate,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.feedback),
+            label: AppStrings.feedback,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: AppStrings.profile,
+          ),
+        ],
+      ),
+    );
   }
 }

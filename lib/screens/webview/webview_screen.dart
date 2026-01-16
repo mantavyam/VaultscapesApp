@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/webview_wrapper.dart';
+import '../../services/url_service.dart';
+
 class WebViewScreen extends StatelessWidget {
   final String linkType;
 
@@ -7,13 +10,15 @@ class WebViewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('WebView: $linkType'),
-      ),
-      body: Center(
-        child: Text('WebView Screen for: $linkType'),
-      ),
+    final url = UrlService.getWebViewUrl(linkType);
+    final title = UrlService.getWebViewTitle(linkType);
+
+    return WebViewWrapper(
+      url: url,
+      title: title,
+      showAppBar: true,
+      enablePullToRefresh: true,
+      enableJavaScript: true,
     );
   }
 }
