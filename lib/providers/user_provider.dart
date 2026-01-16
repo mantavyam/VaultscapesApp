@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -16,18 +17,46 @@ class UserProvider extends ChangeNotifier {
   bool get isGuest => _currentUser != null && !_currentUser!.isAuthenticated;
   bool get hasUser => _currentUser != null;
 
-  // Initialize user state from storage
+  // Initialize user state from storage and set up Firebase auth listener
   Future<void> initialize() async {
     _setLoading(true);
     
     try {
       _currentUser = StorageService.getUser();
+      
+      // Phase 2: Set up Firebase auth state listener
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        _handleAuthStateChange(user);
+      });
+      
       _clearError();
     } catch (e) {
       _setError('Failed to load user data');
     }
     
     _setLoading(false);
+  }
+  
+  // Handle Firebase auth state changes
+  Future<void> _handleAuthStateChange(User? firebaseUser) async {
+    if (firebaseUser == null) {
+      // User signed out
+      if (_currentUser != null && _currentUser!.isAuthenticated) {
+        _currentUser = null;
+        notifyListeners();
+      }
+    } else {
+      // User signed in or session restored
+      final authServiceUser = await AuthService.getCurrentUser();
+      if (authServiceUser != null) {
+        _currentUser = authServiceUser;
+        
+        // Load preferences from Firestore and merge with local
+        await StorageService.loadPreferencesFromFirestore();
+        
+        notifyListeners();
+      }
+    }
   }
 
   // Sign in with Google

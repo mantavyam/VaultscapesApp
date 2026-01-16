@@ -2,17 +2,23 @@ import 'dart:async';
 import '../models/user_model.dart';
 import 'storage_service.dart';
 
-// For Phase 2 - uncomment these imports
-// import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:google_sign_in/google_sign_in.dart';
+// Firebase imports for Phase 2
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum AuthProvider { google, github }
 
 class AuthService {
-  static const bool _isMockPhase = true; // Change to false in Phase 2
+  static const bool _isMockPhase = false; // Changed to false for Phase 2
 
-  // Mock authentication delay
+  // Mock authentication delay (still used for fallback)
   static const Duration _mockDelay = Duration(seconds: 2);
+
+  // Firebase instances
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Sign in with Google
   static Future<UserModel?> signInWithGoogle() async {
@@ -20,8 +26,7 @@ class AuthService {
       return _mockGoogleSignIn();
     } else {
       // Phase 2: Implement real Google Sign-In
-      // return _realGoogleSignIn();
-      throw UnimplementedError('Real Google Sign-In not implemented yet');
+      return _realGoogleSignIn();
     }
   }
 
@@ -31,8 +36,7 @@ class AuthService {
       return _mockGitHubSignIn();
     } else {
       // Phase 2: Implement real GitHub Sign-In
-      // return _realGitHubSignIn();
-      throw UnimplementedError('Real GitHub Sign-In not implemented yet');
+      return _realGitHubSignIn();
     }
   }
 
@@ -42,8 +46,7 @@ class AuthService {
       return _mockSignOut();
     } else {
       // Phase 2: Implement real sign out
-      // return _realSignOut();
-      throw UnimplementedError('Real sign out not implemented yet');
+      return _realSignOut();
     }
   }
 
@@ -54,8 +57,7 @@ class AuthService {
       return user != null;
     } else {
       // Phase 2: Check Firebase Auth state
-      // return FirebaseAuth.instance.currentUser != null;
-      return false;
+      return _auth.currentUser != null;
     }
   }
 
@@ -65,8 +67,7 @@ class AuthService {
       return StorageService.getUser();
     } else {
       // Phase 2: Get user from Firebase
-      // return _getCurrentFirebaseUser();
-      return null;
+      return _getCurrentFirebaseUser();
     }
   }
 
@@ -79,8 +80,8 @@ class AuthService {
     final saved = await StorageService.saveUser(updatedUser);
 
     if (!_isMockPhase && saved) {
-      // Phase 2: Update Firebase user profile
-      // await _updateFirebaseUserProfile(updatedUser);
+      // Phase 2: Update Firebase user profile and Firestore
+      await _updateFirebaseUserProfile(updatedUser);
     }
 
     return saved;
@@ -124,16 +125,12 @@ class AuthService {
     return await StorageService.clearAll();
   }
 
-  // REAL IMPLEMENTATIONS (Phase 2) - To be implemented later
+  // REAL IMPLEMENTATIONS (Phase 2)
   
-  /*
   static Future<UserModel?> _realGoogleSignIn() async {
     try {
-      // Initialize Google Sign-In
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      
       // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null; // User canceled
 
       // Obtain the auth details from the request
@@ -146,7 +143,7 @@ class AuthService {
       );
 
       // Sign in to Firebase with the credential
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await _auth.signInWithCredential(credential);
       final firebaseUser = userCredential.user;
       
       if (firebaseUser == null) return null;
@@ -159,7 +156,7 @@ class AuthService {
         customName: null,
         authProvider: 'google',
         isAuthenticated: true,
-        photoURL: firebaseUser.photoURL,
+        photoURL: firebaseUser.photoURL ?? '',
       );
 
       // Save to local storage
@@ -167,7 +164,12 @@ class AuthService {
       
       // Save auth token
       final token = await firebaseUser.getIdToken();
-      await StorageService.saveAuthToken(token);
+      if (token != null) {
+        await StorageService.saveAuthToken(token);
+      }
+
+      // Create/update Firestore user document
+      await _createOrUpdateFirestoreUser(user);
 
       return user;
     } catch (e) {
@@ -182,7 +184,7 @@ class AuthService {
       final githubProvider = GithubAuthProvider();
       
       // Sign in with popup (web) or redirect (mobile)
-      final userCredential = await FirebaseAuth.instance.signInWithProvider(githubProvider);
+      final userCredential = await _auth.signInWithProvider(githubProvider);
       final firebaseUser = userCredential.user;
       
       if (firebaseUser == null) return null;
@@ -195,7 +197,7 @@ class AuthService {
         customName: null,
         authProvider: 'github',
         isAuthenticated: true,
-        photoURL: firebaseUser.photoURL,
+        photoURL: firebaseUser.photoURL ?? '',
       );
 
       // Save to local storage
@@ -203,7 +205,12 @@ class AuthService {
       
       // Save auth token
       final token = await firebaseUser.getIdToken();
-      await StorageService.saveAuthToken(token);
+      if (token != null) {
+        await StorageService.saveAuthToken(token);
+      }
+
+      // Create/update Firestore user document
+      await _createOrUpdateFirestoreUser(user);
 
       return user;
     } catch (e) {
@@ -214,8 +221,8 @@ class AuthService {
 
   static Future<bool> _realSignOut() async {
     try {
-      await FirebaseAuth.instance.signOut();
-      await GoogleSignIn().signOut();
+      await _auth.signOut();
+      await _googleSignIn.signOut();
       return await StorageService.clearAll();
     } catch (e) {
       print('Sign out error: $e');
@@ -224,7 +231,7 @@ class AuthService {
   }
 
   static Future<UserModel?> _getCurrentFirebaseUser() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return null;
 
     // Try to get from local storage first
@@ -232,28 +239,71 @@ class AuthService {
     
     // If not in local storage or outdated, create from Firebase user
     if (user == null || user.userId != firebaseUser.uid) {
-      user = UserModel(
-        userId: firebaseUser.uid,
-        email: firebaseUser.email ?? '',
-        providerName: firebaseUser.displayName ?? 'User',
-        customName: null, // This would come from Firestore
-        authProvider: 'google', // This would come from Firestore
-        isAuthenticated: true,
-        photoURL: firebaseUser.photoURL,
-      );
-      
-      // Save to local storage
-      await StorageService.saveUser(user);
+      // Try to get from Firestore
+      try {
+        final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+        if (doc.exists) {
+          final data = doc.data()!;
+          user = UserModel(
+            userId: firebaseUser.uid,
+            email: data['email'] ?? firebaseUser.email ?? '',
+            providerName: data['providerName'] ?? firebaseUser.displayName ?? 'User',
+            customName: data['customName'],
+            authProvider: data['authProvider'] ?? 'google',
+            isAuthenticated: true,
+            photoURL: data['photoURL'] ?? firebaseUser.photoURL,
+          );
+        } else {
+          // Create from Firebase user if Firestore doc doesn't exist
+          user = UserModel(
+            userId: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            providerName: firebaseUser.displayName ?? 'User',
+            customName: null,
+            authProvider: 'google', // Default
+            isAuthenticated: true,
+            photoURL: firebaseUser.photoURL ?? '',
+          );
+        }
+        
+        // Save to local storage
+        await StorageService.saveUser(user);
+      } catch (e) {
+        print('Error getting user from Firestore: $e');
+        return null;
+      }
     }
 
     return user;
   }
 
   static Future<void> _updateFirebaseUserProfile(UserModel user) async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    if (firebaseUser != null && user.customName != null) {
-      await firebaseUser.updateDisplayName(user.customName);
+    try {
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser != null && user.customName != null) {
+        await firebaseUser.updateDisplayName(user.customName);
+      }
+
+      // Update Firestore document
+      await _createOrUpdateFirestoreUser(user);
+    } catch (e) {
+      print('Error updating Firebase user profile: $e');
     }
   }
-  */
+
+  static Future<void> _createOrUpdateFirestoreUser(UserModel user) async {
+    try {
+      await _firestore.collection('users').doc(user.userId).set({
+        'email': user.email,
+        'providerName': user.providerName,
+        'customName': user.customName,
+        'authProvider': user.authProvider,
+        'photoURL': user.photoURL,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastActive': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error creating/updating Firestore user: $e');
+    }
+  }
 }
