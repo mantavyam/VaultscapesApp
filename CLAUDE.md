@@ -147,5 +147,5 @@ Read these documents when working on specific areas:
 | `.claude/reference/overview.md` | Product Overview & Objectives, Development Phases & Acceptance Criteria, Success Criteria Summary, Appendix |
 | `.claude/PRD.md` | Understanding functional and non-functional requirements |
 | `.claude/reference/architecture.md` | App Architecture including Tech Stack, Project Structure, Data Architecture, Authentication Architecture, Modular Content Management, Error Handling Strategy, Performance Optimisation|
-| `.claude/reference/userflow.md` | 4 Detailed Userflows including 'First-Time User Journey', 'Returning User Journey (with Homepage Preference)', 'Guest User Journey', 'Profile Customization Flow', 'Feedback+Collaboration Submission Flow' |
+| `.claude/reference/userflow.md` | Detailed Userflows including 'First-Time User Journey', 'Returning User Journey (with Homepage Preference)', 'Guest User Journey', 'Profile Customization Flow', 'Feedback+Collaboration Submission Flow' |
 | `.claude/reference/ui-ux.md` | UI/UX Specs including Component Mapping from shadcn_flutter package, Design System (Color Palette, Typography Scale, Spacing System, Interactive States), Responsive Behavior |
