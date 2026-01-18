@@ -5,6 +5,9 @@ import '../screens/onboarding/welcome_screen.dart';
 import '../screens/main_navigation_screen.dart';
 import '../screens/home/semester_overview_screen.dart';
 import '../screens/home/subject_detail_screen.dart';
+import '../screens/profile/privacy_policy_screen.dart';
+import '../screens/profile/terms_of_service_screen.dart';
+import '../screens/content/gitbook_content_screen.dart';
 
 /// App router configuration using go_router
 class AppRouter {
@@ -24,7 +27,7 @@ class AppRouter {
 
       // Main Navigation (with bottom nav bar)
       GoRoute(
-        path: RouteConstants.home,
+        path: '/main/home',
         name: 'home',
         builder: (context, state) => const MainNavigationScreen(),
         routes: [
@@ -51,6 +54,33 @@ class AppRouter {
                 },
               ),
             ],
+          ),
+          // Privacy Policy
+          GoRoute(
+            path: 'privacy-policy',
+            name: 'privacy-policy',
+            builder: (context, state) => const PrivacyPolicyScreen(),
+          ),
+          // Terms of Service
+          GoRoute(
+            path: 'terms-of-service',
+            name: 'terms-of-service',
+            builder: (context, state) => const TermsOfServiceScreen(),
+          ),
+          // Gitbook Content Screen (for dynamic content)
+          GoRoute(
+            path: 'content',
+            name: 'content',
+            builder: (context, state) {
+              final title = state.uri.queryParameters['title'] ?? 'Content';
+              final gitbookUrl = state.uri.queryParameters['url'] ?? '';
+              final subtitle = state.uri.queryParameters['subtitle'];
+              return GitbookContentScreen(
+                title: title,
+                gitbookUrl: gitbookUrl,
+                subtitle: subtitle,
+              );
+            },
           ),
         ],
       ),

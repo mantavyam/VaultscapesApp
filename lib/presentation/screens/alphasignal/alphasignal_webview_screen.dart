@@ -18,6 +18,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   double _loadingProgress = 0;
+  bool _canGoBack = false;
 
   @override
   void initState() {
@@ -41,9 +42,14 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
               _hasError = false;
             });
           },
-          onPageFinished: (String url) {
+          onPageFinished: (String url) async {
             setState(() {
               _isLoading = false;
+            });
+            // Update back navigation state
+            final canGoBack = await _controller.canGoBack();
+            setState(() {
+              _canGoBack = canGoBack;
             });
           },
           onWebResourceError: (WebResourceError error) {
@@ -57,36 +63,76 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       ..loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
   }
 
+  /// Navigate back in WebView history, or reset to default URL
+  Future<bool> _handleBackNavigation() async {
+    if (await _controller.canGoBack()) {
+      await _controller.goBack();
+      // Update back state after navigation
+      final canGoBack = await _controller.canGoBack();
+      setState(() {
+        _canGoBack = canGoBack;
+      });
+      return true;
+    }
+    return false; // Allow app to handle back navigation
+  }
+
+  /// Reset WebView to the default URL
+  void _resetToDefaultUrl() {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _loadingProgress = 0;
+      _canGoBack = false;
+    });
+    _controller.loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('AlphaSignal.AI'),
-          trailing: [
-            IconButton.ghost(
-              icon: const Icon(Icons.refresh),
-              onPressed: _refresh,
-            ),
-            IconButton.ghost(
-              icon: const Icon(Icons.open_in_browser),
-              onPressed: _openInBrowser,
+    return PopScope(
+      canPop: !_canGoBack,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          await _handleBackNavigation();
+        }
+      },
+      child: Scaffold(
+        headers: [
+          AppBar(
+            leading: [
+              if (_canGoBack)
+                IconButton.ghost(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _handleBackNavigation,
+                ),
+            ],
+            title: const Text('Latest in AI'),
+            trailing: [
+              IconButton.ghost(
+                icon: const Icon(Icons.refresh),
+                onPressed: _refresh,
+              ),
+              IconButton.ghost(
+                icon: const Icon(Icons.home),
+                onPressed: _resetToDefaultUrl,
+              ),
+            ],
+          ),
+        ],
+        child: Column(
+          children: [
+            // Loading Progress Bar
+            if (_isLoading)
+              LinearProgressIndicator(
+                value: _loadingProgress,
+              ),
+            // Content
+            Expanded(
+              child: _hasError ? _buildErrorState() : _buildWebView(),
             ),
           ],
         ),
-      ],
-      child: Column(
-        children: [
-          // Loading Progress Bar
-          if (_isLoading)
-            LinearProgressIndicator(
-              value: _loadingProgress,
-            ),
-          // Content
-          Expanded(
-            child: _hasError ? _buildErrorState() : _buildWebView(),
-          ),
-        ],
       ),
     );
   }
@@ -117,25 +163,5 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       _loadingProgress = 0;
     });
     _controller.reload();
-  }
-
-  void _openInBrowser() {
-    // Use url_launcher to open in external browser
-    showToast(
-      context: context,
-      builder: (context, overlay) {
-        return SurfaceCard(
-          child: Basic(
-            title: const Text('Opening in browser...'),
-            leading: const Icon(Icons.open_in_browser),
-            trailing: IconButton.ghost(
-              icon: const Icon(Icons.close),
-              onPressed: () => overlay.close(),
-            ),
-          ),
-        );
-      },
-      location: ToastLocation.bottomCenter,
-    );
   }
 }

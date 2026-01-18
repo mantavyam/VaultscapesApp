@@ -1,36 +1,32 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/navigation_provider.dart';
-import '../../widgets/common/error_widget.dart';
-import '../../../data/models/semester_model.dart';
 import '../../../data/services/markdown_content_service.dart';
 import '../../../data/services/markdown_parser.dart';
 import '../../widgets/content/markdown_content_renderer.dart';
 import '../../widgets/content/content_loading_skeleton.dart';
 
-/// Subject detail screen following "One Webpage = One Screen" principle
-/// Fetches markdown content from Gitbook URL and renders dynamically
-class SubjectDetailScreen extends StatefulWidget {
-  final String semesterId;
-  final String subjectId;
+/// Generic screen for displaying Gitbook content
+/// Fetches markdown from URL, parses it, and renders with shadcn_flutter
+class GitbookContentScreen extends StatefulWidget {
+  final String title;
+  final String gitbookUrl;
+  final String? subtitle;
 
-  const SubjectDetailScreen({
+  const GitbookContentScreen({
     super.key,
-    required this.semesterId,
-    required this.subjectId,
+    required this.title,
+    required this.gitbookUrl,
+    this.subtitle,
   });
 
   @override
-  State<SubjectDetailScreen> createState() => _SubjectDetailScreenState();
+  State<GitbookContentScreen> createState() => _GitbookContentScreenState();
 }
 
-class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
+class _GitbookContentScreenState extends State<GitbookContentScreen> {
   final MarkdownContentService _contentService = MarkdownContentService();
   final MarkdownParser _parser = MarkdownParser();
 
-  SubjectInfo? _subject;
-  SemesterModel? _semester;
   bool _isLoading = true;
   bool _isFromCache = false;
   String? _errorMessage;
@@ -40,45 +36,10 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSubjectAndContent();
+    _loadContent();
   }
 
-  Future<void> _loadSubjectAndContent() async {
-    // First, find the subject from navigation data
-    final navProvider = context.read<NavigationProvider>();
-    final semId = int.tryParse(widget.semesterId);
-    
-    if (semId != null) {
-      _semester = navProvider.getSemesterById(semId);
-      if (_semester != null) {
-        _subject = _semester!.allSubjects
-            .where((s) => s.code == widget.subjectId)
-            .firstOrNull;
-      }
-    }
-
-    if (_subject == null) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Subject not found';
-        _errorType = MarkdownErrorType.notFound;
-      });
-      return;
-    }
-
-    // If we have a gitbook URL, fetch the content
-    if (_subject!.gitbookUrl != null) {
-      await _loadContent(_subject!.gitbookUrl!);
-    } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'No content URL configured for this subject';
-        _errorType = MarkdownErrorType.notFound;
-      });
-    }
-  }
-
-  Future<void> _loadContent(String gitbookUrl) async {
+  Future<void> _loadContent() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -87,7 +48,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
 
     try {
       await _contentService.init();
-      final result = await _contentService.fetchContent(gitbookUrl);
+      final result = await _contentService.fetchContent(widget.gitbookUrl);
 
       if (result.isSuccess && result.content != null) {
         final blocks = _parser.parse(result.content!);
@@ -113,35 +74,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   Future<void> _refreshContent() async {
-    if (_subject?.gitbookUrl == null) return;
-    await _contentService.clearCacheFor(_subject!.gitbookUrl!);
-    await _loadContent(_subject!.gitbookUrl!);
+    // Clear cache and reload
+    await _contentService.clearCacheFor(widget.gitbookUrl);
+    await _loadContent();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Show error if subject not found
-    if (_subject == null && !_isLoading) {
-      return Scaffold(
-        headers: [
-          AppBar(
-            leading: [
-              IconButton.ghost(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              ),
-            ],
-            title: const Text('Subject Not Found'),
-          ),
-        ],
-        child: AppErrorWidget.generic(
-          message: 'Subject not found',
-          onRetry: () => context.pop(),
-        ),
-      );
-    }
 
     return Scaffold(
       headers: [
@@ -152,7 +92,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               onPressed: () => context.pop(),
             ),
           ],
-          title: Text(_subject?.name ?? 'Loading...'),
+          title: Text(widget.title),
           trailing: [
             if (!_isLoading)
               IconButton.ghost(
@@ -164,11 +104,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       ],
       child: Column(
         children: [
-          // Header with subject info and cache indicator
-          if (_subject != null)
+          // Header with subtitle and cache indicator
+          if (widget.subtitle != null || _isFromCache)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: theme.colorScheme.muted.withValues(alpha: 0.3),
                 border: Border(
@@ -177,29 +117,10 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _subject!.code,
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (_semester != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            _semester!.name,
-                            style: theme.typography.xSmall.copyWith(
-                              color: theme.colorScheme.mutedForeground,
-                            ),
-                          ),
-                        ],
-                      ],
+                  if (widget.subtitle != null)
+                    Expanded(
+                      child: Text(widget.subtitle!).muted(),
                     ),
-                  ),
                   if (_isFromCache)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -246,7 +167,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       return ContentErrorWidget(
         message: _getErrorTitle(),
         details: _errorMessage,
-        onRetry: _subject?.gitbookUrl != null ? () => _loadContent(_subject!.gitbookUrl!) : null,
+        onRetry: _loadContent,
       );
     }
 

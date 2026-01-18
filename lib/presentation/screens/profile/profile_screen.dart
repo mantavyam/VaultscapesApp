@@ -1,6 +1,7 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/constants/url_constants.dart';
 import '../../../core/constants/app_constants.dart';
@@ -417,12 +418,12 @@ class _QuickLinksSection extends StatelessWidget {
           _SettingsListTile(
             icon: Icons.description,
             title: 'Privacy Policy',
-            onTap: () => _launchUrl(UrlConstants.privacyPolicy),
+            onTap: () => context.push('/main/home/privacy-policy'),
           ),
           _SettingsListTile(
             icon: Icons.policy,
             title: 'Terms of Service',
-            onTap: () => _launchUrl(UrlConstants.termsOfService),
+            onTap: () => context.push('/main/home/terms-of-service'),
           ),
         ],
       ),

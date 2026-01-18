@@ -78,13 +78,12 @@ enum UsageFrequency {
   weekly,
   monthly,
   examTimeOnly,
-  rarely,
+  amateurNewUser,
 }
 
 enum FeedbackType {
-  suggestion,
   grievance,
-  appreciation,
-  bugReport,
-  other,
+  improvementSuggestion,
+  generalFeedback,
+  technicalIssues,
 }

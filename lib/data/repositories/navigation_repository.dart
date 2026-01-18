@@ -74,6 +74,7 @@ class NavigationRepository {
       final name = entry.value;
       final code = 'CS${semesterId}0${index + 1}';
       return SubjectInfo(
+        id: code.toLowerCase(),
         code: code,
         name: name,
       );

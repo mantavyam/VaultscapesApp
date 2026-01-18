@@ -180,7 +180,7 @@ Four-tab bottom navigation bar (persistent across authenticated/guest modes):
 ### 2.5 FEEDBACK + COLLABORATE Section
 
 #### 2.5.1 Layout Structure
-**Two-tab interface using `TabList`:**
+**Two-Big Squircle Card interface vertically stacked:** (TODO: Undo Tablist approach)
 - Tab 1: PROVIDE FEEDBACK
 - Tab 2: COLLABORATE NOW
 
@@ -188,131 +188,153 @@ Four-tab bottom navigation bar (persistent across authenticated/guest modes):
 
 **Form Fields (using shadcn_flutter components):**
 
-1. **Header Section**
-   - Title using styled typography
-   - Subtitle explaining Vaultscapes mission
+# Feedback Form | Vaultscapes
+Vaultscapes is an Open-Source Academic Resource Database.
 
-2. **Name Input**
-   - `TextInput` with placeholder "Enter Your Name"
-   - Label: "Hi, I'm_____________"
+**Hi, I'm_____________**
+Enter Your Name:
+→ Component: **Text Input**
 
-3. **Email Input**
-   - `TextInput` with email validation
-   - Helper text: "Email will only be used to respond to your feedback! We respect your privacy."
-   - Auto-populate if authenticated
+**Email ID**
+Email will only be used to respond to your feedback! We respect your privacy.
+→ Component: **Text Input** (with use of basic email format validation)
 
-4. **Role Selection**
-   - `RadioGroup` or `Select` (single choice):
-     - Student
-     - Faculty
-     - Alumni
-     - Staff
-     - Others
+**Select Your Role**
+(Respondents can select up to 1)
+- Student
+- Faculty
+- Alumni
+- Staff
+- Others
+→ Component: **Radio Group** or **Select**
 
-5. **Usage Frequency**
-   - `CheckboxGroup` (multiple selection allowed):
-     - Daily
-     - Weekly
-     - Once in a Month
-     - Exam Time Only
-     - Amateur New User
+**How often do you use Vaultscapes?**
+(Respondents can select as many as they like)
+- Daily
+- Weekly
+- Once in a Month
+- Exam Time Only
+- Amateur New User
+→ Component: **Multi Select** or **Checkbox** group
 
-6. **Semester Selection**
-   - `Select` dropdown (single choice):
-     - Semester 1 / BTECH through Semester 8 / BTECH
+**Which semester are you providing feedback about?**
+(Respondents can select up to 1)
+- Semester 1 / BTECH
+- Semester 2 / BTECH
+- Semester 3 / BTECH
+- Semester 4 / BTECH
+- Semester 5 / BTECH
+- Semester 6 / BTECH
+- Semester 7 / BTECH
+- Semester 8 / BTECH
+→ Component: **Select** or **Radio Group**
 
-7. **Feedback Type**
-   - `RadioCard` or `RadioGroup` (single choice):
-     - Grievance (eg Broken/Incorrect Links or Missing/Incorrect Resource)
-     - Improvement Suggestion (eg Additional Resources or New Feature Ideas)
-     - General Feedback (eg User feedback or overall satisfaction)
-     - Technical Issues (eg Navigation Issues or Unresponsiveness)
+**What type of feedback are you providing?**
+(Respondents can select up to 1)
+- Grievance (eg Broken/Incorrect Links or Missing/Incorrect Resource)
+- Improvement Suggestion (eg Additional Resources or New Feature Ideas)
+- General Feedback (eg User feedback or overall satisfaction)
+- Technical Issues (eg Navigation Issues or Unresponsiveness)
+→ Component: **Radio Group** or **Select**
 
-8. **Detailed Description**
-   - `TextArea` (multiline)
-   - Label: "Please describe your feedback in detail"
-   - Helper text: "Provide as much detail as possible about the issue, suggestion, or comment."
+**Please describe your feedback in detail**
+Provide as much detail as possible about the issue, suggestion, or comment.
+→ Component: **Text Area**
 
-9. **Page URL**
-   - `TextInput` with URL validation
-   - Label: "Enter the Link to the Page"
-   - Helper text: "Copy and Paste the URL of Web-Page you're having issues with."
+**Enter the Link to the Page:**
+Copy and Paste the URL of Web-Page you're having issues with.
+→ Component: **Text Input**
 
-10. **File Attachments**
-    - File picker button (screenshots/recordings)
-    - Label: "Attach Files & media (Optional)"
-    - Helper text: "Screen Shots/Recordings will help us identify the issue faster."
-    - Maximum 5 files, 10MB total
+**Attach Files & media (Optional)**
+Screen Shots/Recordings will help us identify the issue faster.
+→ Component: **Custom File Picker** (not in shadcn_flutter - need native Flutter implementation)
 
-11. **Usability Rating (Optional)**
-    - `StarRating` component (1-5 stars)
-    - Label: "How would you Rate the overall usability of Vaultscapes?"
+**How would you Rate the overall usability of Vaultscapes?**
+(Optional)
+(Respondents can select as many as they like where 5 being very easy and 1 being very hard)
+- 5
+- 4
+- 3
+- 2
+- 1
+→ Component: **Star Rating** or **Radio Group** or **Slider**
 
-12. **Submit Button**
-    - Primary `Button` with loading state
-    - Success `Toast` notification on submission
-    - `AlertDialog` for confirmation
+**Submit Button**
+ - Primary `Button` with loading state
+ - Success `Toast` notification on submission
+ - `AlertDialog` for confirmation
 
 #### 2.5.3 Tab 2: COLLABORATE NOW Form
 
-**Form Fields:**
+**Form Fields (using shadcn_flutter components):**
 
-1. **Submission Type**
-   - `CheckboxGroup` (multiple selection):
-     - Notes
-     - Assignment
-     - Lab Manual (Expt)
-     - Question Bank
-     - Exam Papers (PYQ)
-     - Code Examples
-     - External Link / Sources
+# Collaborate on Vaultscapes
 
-2. **Source Selection**
-   - `RadioGroup`:
-     - Self Written
-     - Internet Document/Resource
-     - Faculty Provided Material
-     - AI-Assisted Human-guided Content
+**What are you submitting?**
+(Respondents can select as many as they like)
+- Notes
+- Assignment
+- Lab Manual (Expt)
+- Question Bank
+- Exam Papers (PYQ)
+- Code Examples
+- External Link / Sources
+→ Component: **Multi Select** or **Checkbox** group
 
-3. **Semester Selection**
-   - `Select` dropdown (single choice):
-     - Semester 1 / BTECH through Semester 8 / BTECH
+**What is the source of your submission?**
+- Self Written
+- Internet Document/Resource
+- Faculty Provided Material
+- AI-Assisted Human-guided Content
+→ Component: **Radio Group** or **Select**
 
-4. **Subject Details**
-   - `TextInput` with autocomplete suggestions
-   - Label: "What is the subject name and code?"
-   - Placeholder: "E.g., Computer Science - CS101"
+**For which semester are you submitting this resource?**
+(Respondents can select up to 1)
+- Semester 1 / BTECH
+- Semester 2 / BTECH
+- Semester 3 / BTECH
+- Semester 4 / BTECH
+- Semester 5 / BTECH
+- Semester 6 / BTECH
+- Semester 7 / BTECH
+- Semester 8 / BTECH
+→ Component: **Select** or **Radio Group**
 
-5. **File Upload (Field 1)**
-   - File picker with drag-and-drop
-   - Label: "Attach (Field 1): Please attach your files here"
-   - Constraints: 10 files max, 5MB per file
+**What is the subject name and code?**
+(E.g., Computer Science - CS101)
+→ Component: **Text Input**
 
-6. **URL Submission (Field 2)**
-   - `TextInput` with URL validation (optional)
-   - Label: "Attach (Field 2): Optional for URL Submission"
+**Attach (Field 1): Please attach your files here**
+You can upload 10 files at a time with a size Limit of 5 mb
+→ Component: **Custom File Picker** (not in shadcn_flutter - need native Flutter implementation)
 
-7. **Description**
-   - `TextArea`
-   - Label: "Describe your submission"
-   - Helper text: "A Short explanation of what this resource contains or why it's useful."
+**Attach (Field 2): Optional for URL Submission**
+→ Component: **Text Input**
 
-8. **Credit Preference**
-   - `RadioGroup`:
-     - YES (show name input field)
-     - NO (anonymous submission)
-   - Conditional `TextInput` for credit details if YES selected
+**Describe your submission.**
+(A Short explanation of what this resource contains or why it's useful.)
+→ Component: **Text Area**
 
-9. **Admin Notes (Optional)**
-   - `TextArea`
-   - Label: "Optional Notes for Admins"
+**Would you like to be credited for this submission on Vaultscapes?**
+[YES] [NO]
+→ Component: **Switch** or **Radio Group**
 
-10. **Submit Button**
-    - Primary `Button` with loading state
-    - Success `Toast` notification
-    - `AlertDialog` for confirmation
+**If yes, please provide the name or details you'd like to be credited with.**
+(E.g., Full Name, Email, Social Media Handle, or "Anonymous")
+→ Component: **Text Input**
+
+**Optional Notes for Admins**
+Any additional notes or information you'd like to share with us?
+→ Component: **Text Area**
+
+**Submit Button**
+ - Primary `Button` with loading state
+ - Success `Toast` notification
+ - `AlertDialog` for confirmation
 
 ---
+
+**Note:** The shadcn_flutter package doesn't include a file picker component, so you'll need to use Flutter's native file picker packages like file_picker or image_picker for file upload functionality.
 
 ### 2.6 PROFILE Section
 

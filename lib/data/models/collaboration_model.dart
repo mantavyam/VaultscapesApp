@@ -68,17 +68,16 @@ class CollaborationModel {
 enum SubmissionType {
   notes,
   assignment,
-  pyq,
+  labManual,
   questionBank,
-  referenceBook,
-  tutorial,
-  other,
+  examPapers,
+  codeExamples,
+  externalLinks,
 }
 
 enum SourceType {
-  selfCreated,
-  teacherProvided,
-  internetSource,
-  otherStudent,
-  other,
+  selfWritten,
+  internetResource,
+  facultyProvided,
+  aiAssisted,
 }
