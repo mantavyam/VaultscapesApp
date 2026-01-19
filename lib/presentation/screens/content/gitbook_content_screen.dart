@@ -119,7 +119,7 @@ class _GitbookContentScreenState extends State<GitbookContentScreen> {
                 children: [
                   if (widget.subtitle != null)
                     Expanded(
-                      child: Text(widget.subtitle!).muted(),
+                      child: Text(widget.subtitle!).muted,
                     ),
                   if (_isFromCache)
                     Container(
