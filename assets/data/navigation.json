@@ -91,7 +91,7 @@
       "order": 4,
       "overview": {
         "name": "Overview - Semester 4",
-        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/overview"
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/overview/readme"
       },
       "subjects": [
         { "id": "cse401-discrete-maths", "name": "Discrete Maths", "code": "CSE401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/cse401-discrete-maths" },
@@ -114,7 +114,7 @@
       "order": 5,
       "overview": {
         "name": "Overview - Semester 5",
-        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/overview"
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/overview/readme"
       },
       "subjects": [
         { "id": "cse303-daa", "name": "DAA", "code": "CSE303", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse303-daa" },

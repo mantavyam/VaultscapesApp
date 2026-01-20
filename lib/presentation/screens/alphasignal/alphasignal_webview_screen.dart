@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart' show Color, Dialog;
+import 'package:flutter/material.dart' show Color, Material, showGeneralDialog;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../widgets/common/error_widget.dart';
@@ -35,52 +35,98 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   ];
 
   // JavaScript to hide unwanted elements from the email pages
-  // FIRST PRINCIPLES: Ensure content is visible, then hide unwanted elements
+  // FIRST PRINCIPLES: Hide page chrome, maximize iframe, hide unwanted iframe content
   static const String _hideEmailElementsJs = '''
     (function() {
       console.log('VaultScapes: === EMAIL PAGE PROCESSOR START ===');
       console.log('VaultScapes: URL = ' + window.location.href);
       
-      // STEP 1: Force page-level visibility (fixes Next.js/SSR issues)
-      function forcePageVisibility() {
-        // Force document and body to be visible
-        document.documentElement.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background-color: white !important;';
-        document.body.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background-color: white !important; min-height: 100vh !important;';
-        
-        // Force #__next (Next.js root) to be visible
-        var nextRoot = document.getElementById('__next');
-        if (nextRoot) {
-          nextRoot.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
-          console.log('VaultScapes: #__next found and made visible');
+      // STEP 1: Hide page-level elements (header, back link, title, footer)
+      // These are OUTSIDE the iframe and should be completely removed
+      function hidePageChrome() {
+        // Inject CSS to hide page chrome immediately
+        var style = document.createElement('style');
+        style.id = 'vaultscapes-page-hide';
+        style.textContent = `
+          /* Hide header with Advertise button */
+          header { display: none !important; }
+          
+          /* Hide footer elements */
+          footer { display: none !important; }
+          
+          /* Hide back link and heading (title + timestamp) */
+          .container > a[href="/archive"],
+          .container > a[href*="archive"],
+          .heading,
+          .container > .heading { display: none !important; }
+          
+          /* Make iframe container take full height */
+          .my-5, .my-5 > div {
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: 100vh !important;
+          }
+          
+          /* Make container full width and no margins */
+          .container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            margin-bottom: 0 !important;
+          }
+          
+          /* Hide archive-page specific elements */
+          .archive-page > header,
+          .archive-page footer { display: none !important; }
+          
+          /* Ensure #__next takes full space */
+          #__next, #__next > div, .min-h-screen {
+            min-height: 100vh !important;
+          }
+          
+          /* Remove body padding/margin */
+          body {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+          }
+        `;
+        if (!document.getElementById('vaultscapes-page-hide')) {
+          document.head.appendChild(style);
         }
         
-        // Force main content areas
-        var mainAreas = document.querySelectorAll('main, .container, [class*="content"], [class*="email"]');
-        mainAreas.forEach(function(el) {
-          el.style.setProperty('display', 'block', 'important');
-          el.style.setProperty('visibility', 'visible', 'important');
-          el.style.setProperty('opacity', '1', 'important');
+        // Also directly hide elements
+        var elementsToHide = [
+          'header',
+          'footer',
+          '.heading',
+          'a[href="/archive"]',
+          'a[href*="archive"]:not(iframe *)'
+        ];
+        
+        elementsToHide.forEach(function(selector) {
+          var elements = document.querySelectorAll(selector);
+          elements.forEach(function(el) {
+            // Don't hide elements inside iframe
+            if (!el.closest('iframe')) {
+              el.style.setProperty('display', 'none', 'important');
+            }
+          });
         });
         
-        // Remove any loading overlays or skeleton screens
-        var overlays = document.querySelectorAll('[class*="loading"], [class*="skeleton"], [class*="spinner"], [class*="overlay"]');
-        overlays.forEach(function(el) {
-          el.style.setProperty('display', 'none', 'important');
-        });
-        
-        console.log('VaultScapes: Page visibility forced');
+        console.log('VaultScapes: Page chrome hidden');
       }
       
-      // STEP 2: Process iframe (where email content lives)
+      // STEP 2: Process iframe (maximize and clean content)
       function processIframe(iframe) {
         if (!iframe) return;
         
         console.log('VaultScapes: Processing iframe');
         
-        // Make iframe container visible and full-width
-        iframe.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; min-height: 80vh !important; height: auto !important; border: none !important; background: white !important;';
+        // Make iframe full-screen
+        iframe.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; min-height: 100vh !important; height: auto !important; border: none !important; background: white !important; margin: 0 !important; padding: 0 !important;';
         
-        // Make all parent containers visible
+        // Make all parent containers visible and full-height
         var parent = iframe.parentElement;
         var depth = 0;
         while (parent && parent !== document.body && depth < 20) {
@@ -88,21 +134,24 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
           parent.style.setProperty('visibility', 'visible', 'important');
           parent.style.setProperty('opacity', '1', 'important');
           parent.style.setProperty('overflow', 'visible', 'important');
+          parent.style.setProperty('min-height', '100vh', 'important');
+          parent.style.setProperty('margin', '0', 'important');
+          parent.style.setProperty('padding', '0', 'important');
           parent = parent.parentElement;
           depth++;
         }
         
-        // Try to access iframe content
+        // Try to access and clean iframe content
         try {
           var iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
           if (iframeDoc && iframeDoc.body) {
             console.log('VaultScapes: Iframe body accessible');
             
-            // Force iframe body visibility with white background for readability
+            // Force iframe body visibility
             iframeDoc.documentElement.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: white !important;';
             iframeDoc.body.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; background: white !important; color: #222 !important;';
             
-            // Hide unwanted elements
+            // Hide unwanted elements inside iframe
             hideUnwantedElements(iframeDoc);
             
             console.log('VaultScapes: Iframe content height = ' + iframeDoc.body.scrollHeight);
@@ -112,7 +161,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         }
       }
       
-      // STEP 3: Hide unwanted elements (promotional/footer content)
+      // STEP 3: Hide unwanted elements inside iframe (promotional/footer content)
       // CRITICAL: Only hide SMALL tables to avoid hiding main content
       function hideUnwantedElements(doc) {
         if (!doc) return;
@@ -135,16 +184,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
           var tableText = (table.textContent || '').toLowerCase();
           var textLength = tableText.length;
           
-          // SKIP large tables - they likely contain main content
-          // If table is more than 30% of body height, don't hide it
-          if (tableHeight > totalBodyHeight * 0.3) {
-            return;
-          }
-          
-          // SKIP tables with lots of text (likely main content)
-          if (textLength > 2000) {
-            return;
-          }
+          // SKIP large tables - they contain main content
+          if (tableHeight > totalBodyHeight * 0.3) return;
+          if (textLength > 2000) return;
           
           var shouldHide = false;
           
@@ -154,17 +196,17 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             shouldHide = true;
           }
           
-          // Pattern 2: Author section (small promotional block)
+          // Pattern 2: Author section
           if (tableText.indexOf("today's author") !== -1 && textLength < 500) {
             shouldHide = true;
           }
           
-          // Pattern 3: Rating section (feedback buttons)
+          // Pattern 3: Rating section
           if (tableText.indexOf("how was today") !== -1 && textLength < 300) {
             shouldHide = true;
           }
           
-          // Pattern 4: Footer with unsubscribe (ONLY if small)
+          // Pattern 4: Footer with address (ONLY if small)
           if (tableText.indexOf('214 barton springs') !== -1 && textLength < 800) {
             shouldHide = true;
           }
@@ -177,69 +219,45 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
           if (shouldHide) {
             table.style.cssText = 'display: none !important;';
             hiddenCount++;
-            console.log('VaultScapes: Hiding table with ' + textLength + ' chars, height ' + tableHeight);
+            console.log('VaultScapes: Hiding table with ' + textLength + ' chars');
           }
         });
         
-        console.log('VaultScapes: Hidden ' + hiddenCount + ' unwanted elements (total body height: ' + totalBodyHeight + ')');
+        console.log('VaultScapes: Hidden ' + hiddenCount + ' unwanted elements');
       }
       
       // MAIN: Execute processor
       function runProcessor() {
         console.log('VaultScapes: Running processor...');
         
-        // Step 1: Force page visibility
-        forcePageVisibility();
+        // Step 1: Hide page chrome
+        hidePageChrome();
         
         // Step 2: Find and process all iframes
         var iframes = document.querySelectorAll('iframe');
         console.log('VaultScapes: Found ' + iframes.length + ' iframes');
         
-        if (iframes.length === 0) {
-          // No iframes yet, content might be loading
-          console.log('VaultScapes: No iframes found, page might still be loading');
-        }
-        
         iframes.forEach(function(iframe) {
           processIframe(iframe);
           
-          // Also set up load handler for future loads
           iframe.addEventListener('load', function() {
             console.log('VaultScapes: Iframe load event fired');
             processIframe(iframe);
           });
         });
         
-        // Also process document directly (in case no iframe)
-        hideUnwantedElements(document);
-        
         // Log final state
         console.log('VaultScapes: Body dimensions = ' + document.body.offsetWidth + 'x' + document.body.offsetHeight);
-        console.log('VaultScapes: Body computed style = display:' + getComputedStyle(document.body).display + ', visibility:' + getComputedStyle(document.body).visibility + ', opacity:' + getComputedStyle(document.body).opacity);
       }
       
-      // Execute immediately
+      // Execute immediately and retry
       runProcessor();
-      
-      // Retry to catch dynamically loaded content
       [100, 300, 600, 1000, 2000, 3500].forEach(function(delay) {
         setTimeout(runProcessor, delay);
       });
       
-      // Watch for new iframes being added
-      var observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-          mutation.addedNodes.forEach(function(node) {
-            if (node.tagName === 'IFRAME') {
-              console.log('VaultScapes: New iframe detected');
-              setTimeout(function() { processIframe(node); }, 100);
-            }
-          });
-        });
-        // Also run full processor for any DOM changes
-        runProcessor();
-      });
-      
+      // Watch for new iframes
+      var observer = new MutationObserver(function() { runProcessor(); });
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(function() { observer.disconnect(); }, 10000);
       
@@ -373,40 +391,58 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
     _controller.loadRequest(Uri.parse(url));
   }
 
-  /// Show archive dialog/sheet
+  /// Show archive dialog (styled like bottom sheet for scroll support)
   void _showArchiveSheet() {
     bool hasHandledSelection = false; // Local debounce flag
 
-    showDialog(
+    showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      builder: (dialogContext) => _ArchiveDialog(
-        onEmailSelected: (url) {
-          // Debounce: ignore duplicate calls
-          if (hasHandledSelection) return;
-          hasHandledSelection = true;
+      barrierLabel: 'Archive',
+      barrierColor: const Color(0x8A000000), // Black with 54% opacity
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _ArchiveDialog(
+          onEmailSelected: (url) {
+            // Debounce: ignore duplicate calls
+            if (hasHandledSelection) return;
+            hasHandledSelection = true;
 
-          // Check if parent widget is still mounted
-          if (!mounted) return;
+            // Check if parent widget is still mounted
+            if (!mounted) return;
 
-          // Set navigating state before closing
-          setState(() {
-            _isNavigating = true;
-            _isContentReady = false;
-          });
-          _setRandomLoadingText();
+            // Set navigating state before closing
+            setState(() {
+              _isNavigating = true;
+              _isContentReady = false;
+            });
+            _setRandomLoadingText();
 
-          // Close dialog first, then load URL
-          Navigator.of(dialogContext).pop();
+            // Close dialog first, then load URL
+            Navigator.of(dialogContext).pop();
 
-          // Use post-frame callback to ensure dialog is closed before loading
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _loadUrl(url);
-            }
-          });
-        },
-      ),
+            // Use post-frame callback to ensure dialog is closed before loading
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _loadUrl(url);
+              }
+            });
+          },
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        // Slide up from bottom animation
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          )),
+          child: child,
+        );
+      },
     );
   }
 
@@ -570,7 +606,7 @@ class FloatingActionButton extends StatelessWidget {
   }
 }
 
-/// Archive Dialog with WebView
+/// Archive Dialog (styled like bottom sheet but with proper scroll support)
 class _ArchiveDialog extends StatefulWidget {
   final Function(String url) onEmailSelected;
 
@@ -596,23 +632,35 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
     'Getting the AI briefing collection...',
   ];
 
-  // JavaScript to hide archive page header and footer
-  // Archive page has direct DOM access (not iframe)
+  // JavaScript to hide archive page header and footer, and fix scroll
   static const String _hideArchiveElementsJs = '''
     (function() {
-      // Inject CSS for immediate hiding of header and footer
+      // Inject CSS for immediate hiding and scroll fix
       var style = document.createElement('style');
       style.id = 'vaultscapes-archive-hide-style';
       style.textContent = `
         header { display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
         footer { display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
         .backdrop-blur-sm { display: none !important; }
+        
+        /* Enable smooth scrolling */
+        html, body {
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+        
+        /* Adjust container for better scrolling */
+        .container {
+          padding-top: 10px !important;
+          margin-top: 0 !important;
+        }
       `;
       if (!document.getElementById('vaultscapes-archive-hide-style')) {
         document.head.appendChild(style);
       }
       
-      // Also remove elements from DOM
+      // Remove elements from DOM
       function hideArchiveElements() {
         var header = document.querySelector('header');
         if (header) {
@@ -627,6 +675,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
         // Adjust body styling
         document.body.style.paddingTop = '0px';
         document.body.style.marginTop = '0px';
+        document.body.style.overflow = 'auto';
+        document.body.style.touchAction = 'pan-y';
       }
       
       hideArchiveElements();
@@ -638,25 +688,19 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
     })();
   ''';
 
-  // JavaScript to intercept all link clicks in archive page
-  // CRITICAL: Archive page has relative URLs like /email/{id}
-  // We need to detect these and convert to full URLs
+  // JavaScript to intercept link clicks - prevents default and sends to Flutter
   static const String _linkInterceptorJs = '''
     (function() {
-      // Remove any existing listeners and debounce state
+      // Remove any existing listeners
       if (window._vaultscapesLinkHandler) {
         document.removeEventListener('click', window._vaultscapesLinkHandler, true);
       }
-      if (window._vaultscapesTouchHandler) {
-        document.removeEventListener('touchend', window._vaultscapesTouchHandler, true);
-      }
       
-      // Debounce flag to prevent multiple messages
+      // Debounce flag
       window._vaultscapesLinkSent = false;
       
-      // Function to handle link interception
+      // Handle link interception
       function handleLink(e, target) {
-        // If already sent a message, ignore
         if (window._vaultscapesLinkSent) return false;
         
         var url = target.href;
@@ -672,10 +716,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
           e.stopPropagation();
           e.stopImmediatePropagation();
           
-          // Mark as sent immediately
           window._vaultscapesLinkSent = true;
           
-          // Ensure we have full URL
           var fullUrl = url;
           if (!url.startsWith('http')) {
             fullUrl = 'https://alphasignal.ai' + pathname;
@@ -683,7 +725,6 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
           
           console.log('LinkHandler intercepted:', fullUrl);
           
-          // Send URL to Flutter
           if (window.LinkHandler) {
             LinkHandler.postMessage(fullUrl);
           }
@@ -692,7 +733,7 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
         return false;
       }
       
-      // Define click handler
+      // Click handler
       window._vaultscapesLinkHandler = function(e) {
         var target = e.target;
         while (target && target.tagName !== 'A') {
@@ -703,27 +744,9 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
         }
       };
       
-      // Define touch handler (separate to avoid conflicts)
-      window._vaultscapesTouchHandler = function(e) {
-        // Skip if click handler already processed
-        if (window._vaultscapesLinkSent) return;
-        
-        var target = e.target;
-        while (target && target.tagName !== 'A') {
-          target = target.parentElement;
-        }
-        if (target && target.href) {
-          handleLink(e, target);
-        }
-      };
-      
-      // Add click listener (captures before default)
       document.addEventListener('click', window._vaultscapesLinkHandler, true);
       
-      // Add touchend listener for mobile
-      document.addEventListener('touchend', window._vaultscapesTouchHandler, true);
-      
-      return 'link interceptor installed for archive';
+      return 'link interceptor installed';
     })();
   ''';
 
@@ -747,28 +770,23 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
   void _initArchiveWebView() {
     _archiveController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      // Add JavaScript channel to receive link clicks
       ..addJavaScriptChannel(
         'LinkHandler',
         onMessageReceived: (JavaScriptMessage message) {
-          // Debounce: ignore if already handling
           if (_isHandlingEmailSelection) return;
 
           final url = message.message;
           debugPrint('LinkHandler received: $url');
-          // Check if this is an email URL
+
           if (url.contains('alphasignal.ai/email/') ||
               url.contains('alphasignal.ai/last-email')) {
-            // Mark as handling immediately
             _isHandlingEmailSelection = true;
 
-            // Show loading immediately
             if (mounted) {
               setState(() {
                 _isLoading = true;
               });
             }
-            // Call the callback to load in main webview
             widget.onEmailSelected(url);
           }
         },
@@ -790,13 +808,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             }
           },
           onPageFinished: (String url) async {
-            // Apply JavaScript to hide header and footer
             await _archiveController.runJavaScript(_hideArchiveElementsJs);
-
-            // Inject link interceptor
             await _archiveController.runJavaScript(_linkInterceptorJs);
-
-            // Small delay to ensure JS execution completes
             await Future.delayed(const Duration(milliseconds: 300));
 
             if (mounted) {
@@ -806,47 +819,37 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             }
           },
           onNavigationRequest: (NavigationRequest request) {
-            // Debounce: ignore if already handling
             if (_isHandlingEmailSelection) return NavigationDecision.prevent;
 
             final url = request.url;
             debugPrint('Archive onNavigationRequest: $url');
 
-            // Check if this is an email link
-            // Archive page may use relative URLs that get resolved to full URLs
             if (url.contains('alphasignal.ai/email/') ||
                 url.contains('alphasignal.ai/last-email') ||
                 url.contains('/email/')) {
-              // Mark as handling immediately
               _isHandlingEmailSelection = true;
 
-              // Show loading state immediately
               if (mounted) {
                 setState(() {
                   _isLoading = true;
                 });
               }
 
-              // Ensure full URL
               String fullUrl = url;
               if (!url.startsWith('http')) {
                 fullUrl = 'https://alphasignal.ai$url';
               }
 
-              // Call the callback
-              // Schedule callback after current frame to avoid navigation lock
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 widget.onEmailSelected(fullUrl);
               });
               return NavigationDecision.prevent;
             }
 
-            // Allow navigation within archive page only
             if (url.contains('alphasignal.ai/archive') || url == _archiveUrl) {
               return NavigationDecision.navigate;
             }
 
-            // Prevent all other navigation
             return NavigationDecision.prevent;
           },
         ),
@@ -860,22 +863,23 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 40),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+    // Dialog positioned at bottom half of screen, full width
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Material(
+        color: Colors.transparent,
         child: Container(
-          width: screenWidth - 16,
-          height: screenHeight * 0.75,
+          height: screenHeight * 0.5, // Half screen height
+          width: screenWidth, // Full width
           decoration: BoxDecoration(
             color: theme.colorScheme.background,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
-              // Handle bar
+              // Handle bar (visual indicator only)
               Container(
-                margin: const EdgeInsets.only(top: 12),
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
@@ -883,63 +887,45 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Select Article from Archive',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.foreground,
-                        ),
-                      ),
-                    ),
-                    IconButton.ghost(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              // Loading indicator or WebView
+              // WebView fills remaining space
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Stack(
                       children: [
-                        WebViewWidget(controller: _archiveController),
+                        // WebView with full sizing
+                        SizedBox.expand(
+                          child: WebViewWidget(controller: _archiveController),
+                        ),
                         if (_isLoading)
-                          Container(
-                            color: theme.colorScheme.background,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 200,
-                                    child: LinearProgressIndicator(
-                                      value: _loadingProgress > 0
-                                          ? _loadingProgress
-                                          : null,
+                          Positioned.fill(
+                            child: Container(
+                              color: theme.colorScheme.background,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 200,
+                                      child: LinearProgressIndicator(
+                                        value: _loadingProgress > 0
+                                            ? _loadingProgress
+                                            : null,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    _archiveLoadingText,
-                                    style: TextStyle(
-                                      color: theme.colorScheme.mutedForeground,
-                                      fontSize: 14,
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      _archiveLoadingText,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.mutedForeground,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -948,7 +934,6 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
             ],
           ),
         ),

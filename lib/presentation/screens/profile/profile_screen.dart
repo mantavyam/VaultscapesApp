@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../../core/constants/url_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import 'edit_profile_dialog.dart';
 
@@ -267,6 +266,7 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final theme = Theme.of(context);
 
     return Card(
       child: Column(
@@ -282,12 +282,29 @@ class _SettingsSection extends StatelessWidget {
               ),
             ),
           ),
-          _SettingsListTile(
-            icon: Icons.palette,
-            title: 'Theme',
-            subtitle: themeProvider.themeModeLabel,
-            onTap: () => _showThemeSelector(context),
+          // Inline Theme Selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.palette,
+                  color: theme.colorScheme.mutedForeground,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Theme',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                // Segmented button for theme selection
+                _ThemeSegmentedButton(themeProvider: themeProvider),
+              ],
+            ),
           ),
+          const SizedBox(height: 8),
           _SettingsListTile(
             icon: Icons.notifications,
             title: 'Notifications',
@@ -338,70 +355,99 @@ class _SettingsSection extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showThemeSelector(BuildContext context) {
-    final themeProvider = context.read<ThemeProvider>();
+/// Theme segmented button widget
+class _ThemeSegmentedButton extends StatelessWidget {
+  final ThemeProvider themeProvider;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Select Theme'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Clickable(
-                onPressed: () {
-                  themeProvider.setThemeMode(ThemeMode.system);
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Basic(
-                    leading: const Icon(Icons.phone_android),
-                    title: const Text('System'),
-                    trailing: themeProvider.themeMode == ThemeMode.system
-                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                        : null,
-                  ),
-                ),
-              ),
-              Clickable(
-                onPressed: () {
-                  themeProvider.setThemeMode(ThemeMode.light);
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Basic(
-                    leading: const Icon(Icons.light_mode),
-                    title: const Text('Light'),
-                    trailing: themeProvider.themeMode == ThemeMode.light
-                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                        : null,
-                  ),
-                ),
-              ),
-              Clickable(
-                onPressed: () {
-                  themeProvider.setThemeMode(ThemeMode.dark);
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Basic(
-                    leading: const Icon(Icons.dark_mode),
-                    title: const Text('Dark'),
-                    trailing: themeProvider.themeMode == ThemeMode.dark
-                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
-                        : null,
-                  ),
-                ),
-              ),
-            ],
+  const _ThemeSegmentedButton({required this.themeProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final currentMode = themeProvider.themeMode;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.muted,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ThemeOption(
+            icon: Icons.phone_android,
+            tooltip: 'System',
+            isSelected: currentMode == ThemeMode.system,
+            onTap: () => themeProvider.setThemeMode(ThemeMode.system),
           ),
-        );
-      },
+          _ThemeOption(
+            icon: Icons.light_mode,
+            tooltip: 'Light',
+            isSelected: currentMode == ThemeMode.light,
+            onTap: () => themeProvider.setThemeMode(ThemeMode.light),
+          ),
+          _ThemeOption(
+            icon: Icons.dark_mode,
+            tooltip: 'Dark',
+            isSelected: currentMode == ThemeMode.dark,
+            onTap: () => themeProvider.setThemeMode(ThemeMode.dark),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual theme option in the segmented button
+class _ThemeOption extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeOption({
+    required this.icon,
+    required this.tooltip,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      tooltip: (context) => Text(tooltip),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? theme.colorScheme.background : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.mutedForeground,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -425,9 +471,14 @@ class _QuickLinksSection extends StatelessWidget {
             ),
           ),
           _SettingsListTile(
-            icon: Icons.help,
-            title: 'Help & Support',
-            onTap: () => _launchUrl(UrlConstants.contactForm),
+            icon: Icons.group,
+            title: 'Join Your Friends',
+            onTap: () => _launchUrl('https://discord.com/invite/AQ7PNzdCnC'),
+          ),
+          _SettingsListTile(
+            icon: Icons.star_outline,
+            title: 'STAR on GitHub',
+            onTap: () => _launchUrl('https://github.com/mantavyam/vaultscapesDB'),
           ),
           _SettingsListTile(
             icon: Icons.description,
@@ -500,7 +551,7 @@ class _AppInfoSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your comprehensive resource hub for BTech studies',
+              'An Open Source Database for Collaborating at an Institution, Created with <3 by Mantavyam Studios (INDIA) Ltd.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: theme.colorScheme.mutedForeground,

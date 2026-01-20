@@ -43,40 +43,48 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   }
 
   Widget _buildSelectionScreen(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 16),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
 
-          // Feedback Card
-          _buildSelectionCard(
-            context: context,
-            theme: theme,
-            icon: Icons.bolt,
-            title: 'Provide\nFeedback',
-            subtitle: 'Report/Suggest/Improve',
-            badgeText: 'help us serve you better',
-            onTap: () => setState(() => _selectedSection = 'feedback'),
-            color: theme.colorScheme.primary,
+              // Feedback Card
+              Expanded(
+                child: _buildSelectionCard(
+                  context: context,
+                  theme: theme,
+                  icon: Icons.bolt,
+                  title: 'Provide\nFeedback',
+                  subtitle: 'Report/Suggest/Improve',
+                  badgeText: 'Help Us Serve you Better',
+                  onTap: () => setState(() => _selectedSection = 'feedback'),
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Collaborate Card
+              Expanded(
+                child: _buildSelectionCard(
+                  context: context,
+                  theme: theme,
+                  icon: Icons.handshake_outlined,
+                  title: 'Collaborate\nNow',
+                  subtitle: 'Submit/Share/Contribute',
+                  badgeText: 'Join the Community',
+                  onTap: () => setState(() => _selectedSection = 'collaborate'),
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 16),
-
-          // Collaborate Card
-          _buildSelectionCard(
-            context: context,
-            theme: theme,
-            icon: Icons.handshake_outlined,
-            title: 'Collaborate\nNow',
-            subtitle: 'Submit/Share/Contribute',
-            badgeText: 'join the community',
-            onTap: () => setState(() => _selectedSection = 'collaborate'),
-            color: theme.colorScheme.secondary,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -92,100 +100,130 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   }) {
     final isDark = theme.brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.card,
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(
-            color: theme.colorScheme.border,
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top-left icon
-            Icon(
-              icon,
-              size: 24,
-              color: theme.colorScheme.foreground,
-            ),
-            const SizedBox(height: 40),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate proportional sizes based on card dimensions
+        final cardHeight = constraints.maxHeight;
+        final cardWidth = constraints.maxWidth;
+        final minDimension = cardHeight < cardWidth ? cardHeight : cardWidth;
+        
+        // Proportional sizing (relative to card height)
+        final iconSize = (minDimension * 0.10).clamp(20.0, 32.0);
+        final titleFontSize = (minDimension * 0.14).clamp(20.0, 36.0);
+        final subtitleFontSize = (minDimension * 0.065).clamp(12.0, 18.0);
+        final badgeFontSize = (minDimension * 0.055).clamp(10.0, 16.0);
+        final buttonSize = (minDimension * 0.22).clamp(40.0, 64.0);
+        final padding = (minDimension * 0.10).clamp(16.0, 32.0);
+        final buttonIconSize = buttonSize * 0.42;
 
-            // Title section
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.foreground,
-                height: 1.0,
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.all(padding),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.card,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: theme.colorScheme.border,
+                width: 1,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.mutedForeground,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Bottom row with badge and circle button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bottom-left badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : Colors.black.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.foreground,
-                    ),
+                // Top-left icon
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: theme.colorScheme.foreground,
+                ),
+                
+                // Flexible spacer to push content down
+                const Spacer(flex: 2),
+
+                // Title section
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.foreground,
+                    height: 1.0,
                   ),
                 ),
+                SizedBox(height: minDimension * 0.025),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: subtitleFontSize,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.mutedForeground,
+                  ),
+                ),
+                
+                // Flexible spacer before bottom row
+                const Spacer(flex: 1),
 
-                // Bottom-right circle button with arrow
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white : Colors.black,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                // Bottom row with badge and circle button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Bottom-left badge
+                    Flexible(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: padding * 0.5,
+                          vertical: padding * 0.3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.black.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontSize: badgeFontSize,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.foreground,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.arrow_outward,
-                    size: 24,
-                    color: isDark ? Colors.black : Colors.white,
-                  ),
+                    ),
+                    
+                    SizedBox(width: padding * 0.5),
+
+                    // Bottom-right circle button with arrow
+                    Container(
+                      width: buttonSize,
+                      height: buttonSize,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white : Colors.black,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.arrow_outward,
+                        size: buttonIconSize,
+                        color: isDark ? Colors.black : Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
