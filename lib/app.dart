@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/navigation_provider.dart';
 import 'presentation/providers/feedback_provider.dart';
+import 'presentation/providers/theme_provider.dart';
+import 'presentation/providers/onboarding_provider.dart';
 import 'presentation/router/app_router.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/navigation_repository.dart';
@@ -29,6 +31,16 @@ class VaultscapesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Theme Provider
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider(),
+        ),
+
+        // Onboarding Provider
+        ChangeNotifierProvider<OnboardingProvider>(
+          create: (_) => OnboardingProvider(),
+        ),
+
         // Auth Provider
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(authRepository: authRepository),
@@ -48,13 +60,17 @@ class VaultscapesApp extends StatelessWidget {
           ),
         ),
       ],
-      child: ShadcnApp.router(
-        title: 'Vaultscapes',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        routerConfig: AppRouter.router,
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return ShadcnApp.router(
+            title: 'Vaultscapes',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            routerConfig: AppRouter.router,
+          );
+        },
       ),
     );
   }

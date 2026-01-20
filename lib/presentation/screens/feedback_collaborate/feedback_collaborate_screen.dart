@@ -19,23 +19,21 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      headers: [
-        AppBar(
-          leading: _selectedSection != null
-              ? [
+      headers: _selectedSection != null
+          ? [
+              AppBar(
+                leading: [
                   IconButton.ghost(
                     icon: const Icon(Icons.arrow_back),
                     onPressed: () => setState(() => _selectedSection = null),
                   ),
-                ]
-              : [],
-          title: Text(_selectedSection == 'feedback'
-              ? 'Provide Feedback'
-              : _selectedSection == 'collaborate'
-                  ? 'Collaborate Now'
-                  : 'Feedback & Collaborate'),
-        ),
-      ],
+                ],
+                title: Text(_selectedSection == 'feedback'
+                    ? 'Provide Feedback'
+                    : 'Collaborate Now'),
+              ),
+            ]
+          : [],
       child: _selectedSection == null
           ? _buildSelectionScreen(theme)
           : _selectedSection == 'feedback'
@@ -50,30 +48,16 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.only(bottom: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'How can we help you?',
-                ).h3(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Choose an option to get started',
-                ).muted(),
-              ],
-            ),
-          ),
+          const SizedBox(height: 16),
 
           // Feedback Card
           _buildSelectionCard(
+            context: context,
             theme: theme,
-            icon: Icons.message_outlined,
-            title: 'Provide Feedback',
-            description:
-                'Report issues, suggest improvements, or share your experience with Vaultscapes.',
+            icon: Icons.bolt,
+            title: 'Provide\nFeedback',
+            subtitle: 'Report/Suggest/Improve',
+            badgeText: 'help us serve you better',
             onTap: () => setState(() => _selectedSection = 'feedback'),
             color: theme.colorScheme.primary,
           ),
@@ -82,11 +66,12 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
 
           // Collaborate Card
           _buildSelectionCard(
+            context: context,
             theme: theme,
             icon: Icons.handshake_outlined,
-            title: 'Collaborate Now',
-            description:
-                'Submit notes, assignments, question papers, or other academic resources to help fellow students.',
+            title: 'Collaborate\nNow',
+            subtitle: 'Submit/Share/Contribute',
+            badgeText: 'join the community',
             onTap: () => setState(() => _selectedSection = 'collaborate'),
             color: theme.colorScheme.secondary,
           ),
@@ -96,62 +81,109 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   }
 
   Widget _buildSelectionCard({
+    required BuildContext context,
     required ThemeData theme,
     required IconData icon,
     required String title,
-    required String description,
+    required String subtitle,
+    required String badgeText,
     required VoidCallback onTap,
     required Color color,
   }) {
-    return Card(
-      child: Clickable(
-        onPressed: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: color,
-                ),
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.card,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(
+            color: theme.colorScheme.border,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top-left icon
+            Icon(
+              icon,
+              size: 24,
+              color: theme.colorScheme.foreground,
+            ),
+            const SizedBox(height: 40),
+
+            // Title section
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.foreground,
+                height: 1.0,
               ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-              ).h4(),
-              const SizedBox(height: 8),
-              Text(
-                description,
-              ).muted(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    'Get Started',
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Bottom row with badge and circle button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Bottom-left badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.black.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    badgeText,
                     style: TextStyle(
-                      color: theme.colorScheme.primary,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.foreground,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward,
-                    size: 18,
-                    color: theme.colorScheme.primary,
+                ),
+
+                // Bottom-right circle button with arrow
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white : Colors.black,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ],
-          ),
+                  child: Icon(
+                    Icons.arrow_outward,
+                    size: 24,
+                    color: isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

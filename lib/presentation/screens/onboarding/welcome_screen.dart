@@ -2,6 +2,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/onboarding_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_constants.dart';
 
@@ -134,7 +135,9 @@ class WelcomeScreen extends StatelessWidget {
 
   void _continueAsGuest(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
+    final onboardingProvider = context.read<OnboardingProvider>();
     await authProvider.continueAsGuest();
+    await onboardingProvider.completeOnboarding();
     if (context.mounted) {
       context.go(RouteConstants.home);
     }
@@ -185,11 +188,13 @@ class _AuthBottomSheetState extends State<_AuthBottomSheet> {
     setState(() => _isLoading = true);
 
     final authProvider = context.read<AuthProvider>();
+    final onboardingProvider = context.read<OnboardingProvider>();
     final success = await authProvider.mockAuthenticate();
 
     if (mounted) {
       Navigator.of(context).pop(); // Close dialog
       if (success && context.mounted) {
+        await onboardingProvider.completeOnboarding();
         context.go(RouteConstants.home); // Navigate to home
       }
     }

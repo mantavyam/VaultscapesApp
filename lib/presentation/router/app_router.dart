@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/route_constants.dart';
+import '../providers/onboarding_provider.dart';
 import '../screens/onboarding/welcome_screen.dart';
 import '../screens/main_navigation_screen.dart';
 import '../screens/home/semester_overview_screen.dart';
@@ -17,6 +19,24 @@ class AppRouter {
     navigatorKey: _rootNavigatorKey,
     initialLocation: RouteConstants.welcome,
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      final onboardingProvider = context.read<OnboardingProvider>();
+
+      // If still loading onboarding state, don't redirect
+      if (onboardingProvider.isLoading) {
+        return null;
+      }
+
+      final isOnWelcomePage = state.matchedLocation == RouteConstants.welcome;
+      final hasCompletedOnboarding = onboardingProvider.hasCompletedOnboarding;
+
+      // If user has completed onboarding and is on welcome page, redirect to home
+      if (hasCompletedOnboarding && isOnWelcomePage) {
+        return RouteConstants.home;
+      }
+
+      return null;
+    },
     routes: [
       // Welcome/Onboarding Screen
       GoRoute(

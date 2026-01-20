@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../../core/constants/url_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import 'edit_profile_dialog.dart';
@@ -16,11 +17,6 @@ class ProfileScreen extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Scaffold(
-          headers: [
-            AppBar(
-              title: const Text('Profile'),
-            ),
-          ],
           child: authProvider.isAuthenticated
               ? _AuthenticatedProfileView(authProvider: authProvider)
               : const _GuestProfileView(),
@@ -66,14 +62,10 @@ class _GuestProfileView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Sign In Button
-          SizedBox(
-            width: double.infinity,
-            child: PrimaryButton(
-              onPressed: () => _showSignInSheet(context),
-              size: ButtonSize.large,
-              child: const Text('Sign In'),
-            ),
+          // Sign In Button - Appropriately sized
+          PrimaryButton(
+            onPressed: () => _showSignInSheet(context),
+            child: const Text('Sign In'),
           ),
           const SizedBox(height: 40),
 
@@ -274,6 +266,8 @@ class _AuthenticatedProfileView extends StatelessWidget {
 class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +285,7 @@ class _SettingsSection extends StatelessWidget {
           _SettingsListTile(
             icon: Icons.palette,
             title: 'Theme',
-            subtitle: 'System default',
+            subtitle: themeProvider.themeModeLabel,
             onTap: () => _showThemeSelector(context),
           ),
           _SettingsListTile(
@@ -346,6 +340,8 @@ class _SettingsSection extends StatelessWidget {
   }
 
   void _showThemeSelector(BuildContext context) {
+    final themeProvider = context.read<ThemeProvider>();
+
     showDialog(
       context: context,
       builder: (context) {
@@ -355,32 +351,50 @@ class _SettingsSection extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Clickable(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                onPressed: () {
+                  themeProvider.setThemeMode(ThemeMode.system);
+                  Navigator.of(context).pop();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Basic(
-                    leading: Icon(Icons.phone_android),
-                    title: Text('System'),
+                    leading: const Icon(Icons.phone_android),
+                    title: const Text('System'),
+                    trailing: themeProvider.themeMode == ThemeMode.system
+                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                        : null,
                   ),
                 ),
               ),
               Clickable(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                onPressed: () {
+                  themeProvider.setThemeMode(ThemeMode.light);
+                  Navigator.of(context).pop();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Basic(
-                    leading: Icon(Icons.light_mode),
-                    title: Text('Light'),
+                    leading: const Icon(Icons.light_mode),
+                    title: const Text('Light'),
+                    trailing: themeProvider.themeMode == ThemeMode.light
+                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                        : null,
                   ),
                 ),
               ),
               Clickable(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                onPressed: () {
+                  themeProvider.setThemeMode(ThemeMode.dark);
+                  Navigator.of(context).pop();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Basic(
-                    leading: Icon(Icons.dark_mode),
-                    title: Text('Dark'),
+                    leading: const Icon(Icons.dark_mode),
+                    title: const Text('Dark'),
+                    trailing: themeProvider.themeMode == ThemeMode.dark
+                        ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                        : null,
                   ),
                 ),
               ),
