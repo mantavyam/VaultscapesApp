@@ -127,10 +127,80 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   void _showAuthBottomSheet(BuildContext context) {
-    showDialog(
+    openSheet(
       context: context,
-      builder: (context) => const _AuthBottomSheet(),
+      position: OverlayPosition.bottom,
+      draggable: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.muted,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Title
+              Text(
+                'Welcome to ${AppConstants.appName}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sign in to personalize your experience',
+                style: TextStyle(
+                  color: theme.colorScheme.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Google Sign In Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlineButton(
+                  onPressed: () => _handleGoogleSignIn(context, sheetContext),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(LucideIcons.chrome, size: 20),
+                      SizedBox(width: 12),
+                      Text('Continue with Google'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _handleGoogleSignIn(BuildContext context, BuildContext sheetContext) async {
+    closeSheet(sheetContext); // Close bottom sheet
+    
+    final authProvider = context.read<AuthProvider>();
+    final onboardingProvider = context.read<OnboardingProvider>();
+    
+    final success = await authProvider.signInWithGoogle();
+    
+    if (success && context.mounted) {
+      await onboardingProvider.completeOnboarding();
+      context.go(RouteConstants.home);
+    }
   }
 
   void _continueAsGuest(BuildContext context) async {
@@ -141,150 +211,5 @@ class WelcomeScreen extends StatelessWidget {
     if (context.mounted) {
       context.go(RouteConstants.home);
     }
-  }
-}
-
-/// Authentication bottom sheet
-class _AuthBottomSheet extends StatefulWidget {
-  const _AuthBottomSheet();
-
-  @override
-  State<_AuthBottomSheet> createState() => _AuthBottomSheetState();
-}
-
-class _AuthBottomSheetState extends State<_AuthBottomSheet> {
-  bool _isLoading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      title: Text('Welcome to ${AppConstants.appName}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Sign in to personalize your experience',
-            style: TextStyle(
-              color: theme.colorScheme.mutedForeground,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Auth Options
-          if (_isLoading)
-            const _LoadingAuth()
-          else
-            _AuthOptions(
-              onMockAuth: _handleMockAuth,
-            ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _handleMockAuth() async {
-    setState(() => _isLoading = true);
-
-    final authProvider = context.read<AuthProvider>();
-    final onboardingProvider = context.read<OnboardingProvider>();
-    final success = await authProvider.mockAuthenticate();
-
-    if (mounted) {
-      Navigator.of(context).pop(); // Close dialog
-      if (success && context.mounted) {
-        await onboardingProvider.completeOnboarding();
-        context.go(RouteConstants.home); // Navigate to home
-      }
-    }
-  }
-}
-
-class _AuthOptions extends StatelessWidget {
-  final VoidCallback onMockAuth;
-
-  const _AuthOptions({required this.onMockAuth});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        // Mock Auth Button (Phase 1)
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: PrimaryButton(
-            onPressed: onMockAuth,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.login_rounded, size: 20),
-                SizedBox(width: 8),
-                Text('Sign In'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Google Sign In (Phase 2 - Placeholder)
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlineButton(
-            onPressed: null, // Disabled for Phase 1
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.g_mobiledata_rounded,
-                  size: 20,
-                  color: theme.colorScheme.mutedForeground,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    'Google (Coming Soon)',
-                    style: TextStyle(
-                      color: theme.colorScheme.mutedForeground,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoadingAuth extends StatelessWidget {
-  const _LoadingAuth();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        const SizedBox(height: 24),
-        const CircularProgressIndicator(),
-        const SizedBox(height: 24),
-        Text(
-          'Signing you in...',
-          style: TextStyle(
-            color: theme.colorScheme.mutedForeground,
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
-    );
   }
 }

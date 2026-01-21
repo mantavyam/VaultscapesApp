@@ -3,10 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart' show Color, Material, showGeneralDialog;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/common/error_widget.dart';
 import '../../../core/constants/url_constants.dart';
 
-/// AlphaSignal WebView screen (Breakthrough)
+/// AlphaSignal WebView screen (Breakthrough) - requires authentication
 class AlphaSignalWebViewScreen extends StatefulWidget {
   const AlphaSignalWebViewScreen({super.key});
 
@@ -450,63 +452,142 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return PopScope(
-      canPop: !_canGoBack,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) {
-          await _handleBackNavigation();
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Show auth barrier if not authenticated
+        if (!authProvider.isAuthenticated) {
+          return _buildAuthBarrier(context, theme);
         }
-      },
-      child: Scaffold(
-        headers: [
-          AppBar(
-            leading: [
-              if (_canGoBack)
-                IconButton.ghost(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: _handleBackNavigation,
-                ),
-            ],
-            title: const Text('Latest in AI'),
-            trailing: [
-              IconButton.ghost(
-                icon: const Icon(Icons.refresh),
-                onPressed: _refresh,
+
+        return PopScope(
+          canPop: !_canGoBack,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (!didPop) {
+              await _handleBackNavigation();
+            }
+          },
+          child: Scaffold(
+            headers: [
+              AppBar(
+                leading: [
+                  if (_canGoBack)
+                    IconButton.ghost(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _handleBackNavigation,
+                    ),
+                ],
+                title: const Text('Latest in AI'),
+                trailing: [
+                  IconButton.ghost(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _refresh,
+                  ),
+                  IconButton.ghost(
+                    icon: const Icon(Icons.home),
+                    onPressed: _resetToDefaultUrl,
+                  ),
+                ],
               ),
-              IconButton.ghost(
-                icon: const Icon(Icons.home),
-                onPressed: _resetToDefaultUrl,
-              ),
             ],
-          ),
-        ],
-        child: Stack(
-          children: [
-            Column(
+            child: Stack(
               children: [
-                // Content
-                Expanded(
-                  child: _hasError ? _buildErrorState() : _buildWebView(),
+                Column(
+                  children: [
+                    // Content
+                    Expanded(
+                      child: _hasError ? _buildErrorState() : _buildWebView(),
+                    ),
+                  ],
+                ),
+                // Archive FAB
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: FloatingActionButton(
+                    onPressed: _showArchiveSheet,
+                    backgroundColor: theme.colorScheme.primary,
+                    child: Icon(
+                      Icons.archive_outlined,
+                      color: theme.colorScheme.primaryForeground,
+                    ),
+                  ),
                 ),
               ],
             ),
-            // Archive FAB
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton(
-                onPressed: _showArchiveSheet,
-                backgroundColor: theme.colorScheme.primary,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build authentication barrier widget
+  Widget _buildAuthBarrier(BuildContext context, ThemeData theme) {
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('Latest in AI'),
+        ),
+      ],
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Lock icon
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(
-                  Icons.archive_outlined,
-                  color: theme.colorScheme.primaryForeground,
+                  Icons.lock_outline,
+                  size: 64,
+                  color: theme.colorScheme.primary,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 32),
+              // Title
+              Text(
+                'Exclusive Content',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.foreground,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Description
+              Text(
+                'Sign in to access the latest AI briefings and archive. Stay ahead with daily curated AI news, models, papers, and repositories.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: theme.colorScheme.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Sign in button
+              PrimaryButton(
+                onPressed: () {
+                  // Navigate to profile tab to trigger auth
+                  // Or show auth dialog directly
+                  _showAuthPrompt(context);
+                },
+                child: const Text('Sign Up / Login to proceed'),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Show authentication prompt
+  void _showAuthPrompt(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    authProvider.signInWithGoogle();
   }
 
   Widget _buildWebView() {
@@ -619,6 +700,7 @@ class _ArchiveDialog extends StatefulWidget {
 class _ArchiveDialogState extends State<_ArchiveDialog> {
   late WebViewController _archiveController;
   bool _isLoading = true;
+  bool _hasNetworkError = false;
   double _loadingProgress = 0;
   String _archiveLoadingText = 'Loading archive...';
   bool _isHandlingEmailSelection = false; // Debounce flag
@@ -804,6 +886,7 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             if (mounted) {
               setState(() {
                 _isLoading = true;
+                _hasNetworkError = false;
               });
             }
           },
@@ -814,6 +897,15 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
 
             if (mounted) {
               setState(() {
+                _isLoading = false;
+              });
+            }
+          },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint('Archive WebView error: ${error.description}');
+            if (mounted) {
+              setState(() {
+                _hasNetworkError = true;
                 _isLoading = false;
               });
             }
@@ -877,17 +969,30 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
           ),
           child: Column(
             children: [
-              // Handle bar (visual indicator only)
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.muted,
-                  borderRadius: BorderRadius.circular(2),
+              // Drag handle with gesture support
+              GestureDetector(
+                onVerticalDragEnd: (details) {
+                  // Close dialog if dragged down with sufficient velocity
+                  if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.muted,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              // WebView fills remaining space
+              // Content area
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
@@ -896,10 +1001,61 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                     child: Stack(
                       children: [
                         // WebView with full sizing
-                        SizedBox.expand(
-                          child: WebViewWidget(controller: _archiveController),
-                        ),
-                        if (_isLoading)
+                        if (!_hasNetworkError)
+                          SizedBox.expand(
+                            child: WebViewWidget(controller: _archiveController),
+                          ),
+                        // Network error state
+                        if (_hasNetworkError)
+                          Positioned.fill(
+                            child: Container(
+                              color: theme.colorScheme.background,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.wifi_off_rounded,
+                                      size: 64,
+                                      color: theme.colorScheme.mutedForeground,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Network Error',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.foreground,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Unable to load archive. Please check your internet connection.',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.mutedForeground,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    OutlineButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _hasNetworkError = false;
+                                          _isLoading = true;
+                                          _loadingProgress = 0;
+                                        });
+                                        _archiveController.loadRequest(Uri.parse(_archiveUrl));
+                                      },
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Loading state
+                        if (_isLoading && !_hasNetworkError)
                           Positioned.fill(
                             child: Container(
                               color: theme.colorScheme.background,

@@ -46,6 +46,11 @@ dependencies:
   
   # Math/TeX Rendering
   flutter_math_fork: ^0.7.2
+  
+  # Firebase Authentication
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.4
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:

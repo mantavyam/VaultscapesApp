@@ -476,14 +476,7 @@ class MarkdownContentRenderer extends StatelessWidget {
                     (cell) => DataCell(
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 200),
-                        child: _containsInlineElements(cell)
-                            ? _buildRichText(context, cell)
-                            : Text(
-                                cell,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: textColor),
-                              ),
+                        child: _buildTableCell(context, cell, textColor),
                       ),
                     ),
                   )
@@ -604,11 +597,52 @@ class MarkdownContentRenderer extends StatelessWidget {
     return Accordion(
       items: [
         AccordionItem(
-          trigger: AccordionTrigger(child: Text(block.summary)),
+          trigger: AccordionTrigger(child: _buildAccordionSummary(context, block.summary)),
           content: _buildExpandableContent(context, block.content),
         ),
       ],
     );
+  }
+
+  /// Build accordion summary with link support
+  Widget _buildAccordionSummary(BuildContext context, String summary) {
+    // Check if summary contains an anchor link
+    final linkMatch = RegExp(
+      r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>',
+      dotAll: true,
+    ).firstMatch(summary);
+
+    if (linkMatch != null) {
+      final url = linkMatch.group(1) ?? '';
+      final linkText = linkMatch.group(2) ?? '';
+      // Get text before and after the link
+      final beforeLink = summary.substring(0, linkMatch.start);
+      final afterLink = summary.substring(linkMatch.end);
+      
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (beforeLink.isNotEmpty) Text(beforeLink).bold(),
+          GestureDetector(
+            onTap: () => _launchUrl(url),
+            child: Text(
+              linkText,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+                decoration: TextDecoration.underline,
+                decorationColor: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          if (afterLink.isNotEmpty) Text(afterLink).bold(),
+        ],
+      );
+    }
+
+    // No link, return bold text
+    return Text(summary).bold();
   }
 
   /// Build expandable content by parsing markdown
@@ -826,6 +860,115 @@ class MarkdownContentRenderer extends StatelessWidget {
   // ===========================================================================
   // Helper Methods
   // ===========================================================================
+
+  /// Build table cell content - handles buttons, links, and text
+  Widget _buildTableCell(BuildContext context, String cell, Color textColor) {
+    // Check for button-style anchor with data-icon attribute (can be empty or have content)
+    final buttonWithIconMatch = RegExp(
+      r'<a[^>]*href="([^"]*)"[^>]*class="button\s*(\w*)"[^>]*data-icon="([^"]*)"[^>]*>.*?</a>',
+      dotAll: true,
+    ).firstMatch(cell);
+
+    if (buttonWithIconMatch != null) {
+      final url = buttonWithIconMatch.group(1) ?? '';
+      final style = buttonWithIconMatch.group(2) ?? 'primary';
+      final iconName = buttonWithIconMatch.group(3) ?? '';
+      return _buildTableButtonCell(context, url, style, iconName);
+    }
+
+    // Also check for alternate attribute order (class before href)
+    final buttonAltMatch = RegExp(
+      r'<a[^>]*class="button\s*(\w*)"[^>]*href="([^"]*)"[^>]*data-icon="([^"]*)"[^>]*>.*?</a>',
+      dotAll: true,
+    ).firstMatch(cell);
+
+    if (buttonAltMatch != null) {
+      final style = buttonAltMatch.group(1) ?? 'primary';
+      final url = buttonAltMatch.group(2) ?? '';
+      final iconName = buttonAltMatch.group(3) ?? '';
+      return _buildTableButtonCell(context, url, style, iconName);
+    }
+
+    // Check for regular link anchor
+    final linkMatch = RegExp(
+      r'<a[^>]*href="([^"]*)"[^>]*>([^<]+)</a>',
+      dotAll: true,
+    ).firstMatch(cell);
+
+    if (linkMatch != null) {
+      final url = linkMatch.group(1) ?? '';
+      final linkText = linkMatch.group(2) ?? '';
+      return GestureDetector(
+        onTap: () => _launchUrl(url),
+        child: Text(
+          linkText,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      );
+    }
+
+    // Regular text or inline elements
+    if (_containsInlineElements(cell)) {
+      return _buildRichText(context, cell);
+    }
+
+    return Text(
+      cell,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(color: textColor),
+    );
+  }
+
+  /// Build a button widget for table cells
+  Widget _buildTableButtonCell(
+    BuildContext context,
+    String url,
+    String style,
+    String iconName,
+  ) {
+    IconData iconData;
+    switch (iconName) {
+      case 'arrow-down-to-square':
+      case 'download':
+        iconData = LucideIcons.download;
+        break;
+      case 'external-link':
+        iconData = LucideIcons.externalLink;
+        break;
+      case 'eye':
+        iconData = LucideIcons.eye;
+        break;
+      case 'link':
+        iconData = LucideIcons.link;
+        break;
+      case 'arrow-right':
+        iconData = LucideIcons.arrowRight;
+        break;
+      default:
+        // For any other icon or empty, use external link / web icon
+        iconData = LucideIcons.externalLink;
+    }
+
+    if (style == 'secondary') {
+      return OutlineButton(
+        size: ButtonSize.small,
+        onPressed: () => _launchUrl(url),
+        child: Icon(iconData, size: 16),
+      );
+    }
+
+    return PrimaryButton(
+      size: ButtonSize.small,
+      onPressed: () => _launchUrl(url),
+      child: Icon(iconData, size: 16),
+    );
+  }
 
   /// Check if text contains inline elements
   bool _containsInlineElements(String text) {

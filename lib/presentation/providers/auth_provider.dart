@@ -52,7 +52,27 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Perform mock authentication (Phase 1)
+  /// Sign in with Google using Firebase
+  Future<bool> signInWithGoogle() async {
+    _state = AuthState.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _user = await _authRepository.signInWithGoogle();
+      _state = AuthState.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = AuthState.error;
+      _errorMessage = 'Sign in failed. Please try again.';
+      debugPrint('Sign in error: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Perform mock authentication (fallback for testing)
   Future<bool> mockAuthenticate({String? name, String? email}) async {
     _state = AuthState.loading;
     _errorMessage = null;
@@ -139,16 +159,10 @@ class AuthProvider extends ChangeNotifier {
     await logout();
   }
 
-  /// Sign in with Google (placeholder)
-  Future<bool> signInWithGoogle() async {
-    // For Phase 1, just use mock authentication
-    return await mockAuthenticate();
-  }
-
   /// Convert guest to authenticated user
-  Future<bool> convertGuestToAuthenticated({String? name, String? email}) async {
+  Future<bool> convertGuestToAuthenticated() async {
     if (_state != AuthState.guest) return false;
-    return await mockAuthenticate(name: name, email: email);
+    return await signInWithGoogle();
   }
 
   /// Clear error

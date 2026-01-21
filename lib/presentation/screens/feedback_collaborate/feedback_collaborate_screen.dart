@@ -1,4 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import 'feedback_form_tab.dart';
 import 'collaborate_form_tab.dart';
 
@@ -14,31 +16,131 @@ class FeedbackCollaborateScreen extends StatefulWidget {
 class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   String? _selectedSection;
 
+  void _goBack() {
+    if (_selectedSection != null) {
+      setState(() => _selectedSection = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      headers: _selectedSection != null
-          ? [
-              AppBar(
-                leading: [
-                  IconButton.ghost(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => setState(() => _selectedSection = null),
-                  ),
-                ],
-                title: Text(_selectedSection == 'feedback'
-                    ? 'Provide Feedback'
-                    : 'Collaborate Now'),
+    return PopScope(
+      canPop: _selectedSection == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectedSection != null) {
+          _goBack();
+        }
+      },
+      child: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          // Check if user is authenticated for form sections
+          if (_selectedSection != null && !authProvider.isAuthenticated) {
+            return Scaffold(
+              headers: [
+                AppBar(
+                  leading: [
+                    IconButton.ghost(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _goBack,
+                    ),
+                  ],
+                  title: Text(_selectedSection == 'feedback'
+                      ? 'Provide Feedback'
+                      : 'Collaborate Now'),
+                ),
+              ],
+              child: _buildAuthBarrier(context, theme),
+            );
+          }
+
+          return Scaffold(
+            headers: _selectedSection != null
+                ? [
+                    AppBar(
+                      leading: [
+                        IconButton.ghost(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: _goBack,
+                        ),
+                      ],
+                      title: Text(_selectedSection == 'feedback'
+                          ? 'Provide Feedback'
+                          : 'Collaborate Now'),
+                    ),
+                  ]
+                : [],
+            child: _selectedSection == null
+                ? _buildSelectionScreen(theme)
+                : _selectedSection == 'feedback'
+                    ? const FeedbackFormTab()
+                    : const CollaborateFormTab(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAuthBarrier(BuildContext context, ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 64,
+              color: theme.colorScheme.mutedForeground,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Sign Up / Login to proceed',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.foreground,
               ),
-            ]
-          : [],
-      child: _selectedSection == null
-          ? _buildSelectionScreen(theme)
-          : _selectedSection == 'feedback'
-              ? const FeedbackFormTab()
-              : const CollaborateFormTab(),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Feature is Available for FREE only to Logged In Users of Vaultscapes',
+              style: TextStyle(
+                fontSize: 14,
+                color: theme.colorScheme.mutedForeground,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            PrimaryButton(
+              onPressed: () {
+                // Navigate to profile tab for sign in
+                // This will be handled by the main navigation
+                showToast(
+                  context: context,
+                  builder: (context, overlay) {
+                    return SurfaceCard(
+                      child: Basic(
+                        title: const Text('Sign In Required'),
+                        subtitle: const Text('Please go to Profile tab to sign in'),
+                        leading: const Icon(Icons.person),
+                        trailing: IconButton.ghost(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => overlay.close(),
+                        ),
+                      ),
+                    );
+                  },
+                  location: ToastLocation.bottomCenter,
+                );
+              },
+              child: const Text('Go to Sign In'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "194132394153",
+    "project_id": "vaultscapes-mantavyam",
+    "storage_bucket": "vaultscapes-mantavyam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:194132394153:android:ea2704f4e21e3bb5bf69b8",
+        "android_client_info": {
+          "package_name": "com.mantavyam.vaultscapes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "194132394153-i5u1u424qcc7lep0onm3gfqt4unagfb0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mantavyam.vaultscapes",
+            "certificate_hash": "3b63c1136d5b8cf4ad4a526c788f59d566bbf67d"
+          }
+        },
+        {
+          "client_id": "194132394153-i4jbp2dmqgrv20ha4765bog9bkfltbgn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdyWBkFFjTc984nImUfFeb1-eHuXaS1wE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "194132394153-i4jbp2dmqgrv20ha4765bog9bkfltbgn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

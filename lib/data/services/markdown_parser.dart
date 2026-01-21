@@ -1,7 +1,27 @@
 /// Markdown parser that handles Gitbook-specific syntax and converts to ContentBlocks
 class MarkdownParser {
+  /// Decode HTML entities in a string
+  String _decodeHtmlEntities(String text) {
+    return text
+        .replaceAll('&#x26;', '&')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&apos;', "'")
+        .replaceAll('&#x20;', ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&#x3C;', '<')
+        .replaceAll('&#x3E;', '>')
+        .replaceAll('&#x22;', '"')
+        .replaceAll('&#x27;', "'");
+  }
+
   /// Parse markdown content into a list of ContentBlocks
   List<ContentBlock> parse(String markdown) {
+    // Pre-process: decode HTML entities in the raw markdown
+    markdown = _decodeHtmlEntities(markdown);
     final blocks = <ContentBlock>[];
     final lines = markdown.split('\n');
     int i = 0;
@@ -87,6 +107,14 @@ class MarkdownParser {
       // Check for HTML tables
       if (trimmedLine.startsWith('<table')) {
         final result = _parseHtmlTable(lines, i);
+        blocks.add(result.block);
+        i = result.nextIndex;
+        continue;
+      }
+
+      // Check for simple markdown tables (pipe syntax)
+      if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+        final result = _parseMarkdownTable(lines, i);
         blocks.add(result.block);
         i = result.nextIndex;
         continue;
@@ -738,8 +766,8 @@ class MarkdownParser {
 
       for (final cellMatch in cellMatches) {
         var cellContent = cellMatch.group(1) ?? '';
-        // Clean up HTML
-        cellContent = _stripHtmlTags(cellContent).trim();
+        // Preserve button anchor tags but strip other HTML
+        cellContent = _processTableCell(cellContent).trim();
         allCellValues.add(cellContent);
       }
 
@@ -795,6 +823,61 @@ class MarkdownParser {
     return _ParseResult(
       block: TableBlock(headers: headers, rows: rows),
       nextIndex: i + 1,
+    );
+  }
+
+  /// Parse simple markdown table (pipe syntax: | col1 | col2 |)
+  _ParseResult _parseMarkdownTable(List<String> lines, int start) {
+    final headers = <String>[];
+    final rows = <List<String>>[];
+    int i = start;
+
+    // Parse header row
+    final headerLine = lines[i].trim();
+    if (headerLine.startsWith('|') && headerLine.endsWith('|')) {
+      final headerCells = headerLine
+          .substring(1, headerLine.length - 1)
+          .split('|')
+          .map((cell) => _decodeHtmlEntities(cell.trim()))
+          .toList();
+      headers.addAll(headerCells);
+      i++;
+    }
+
+    // Skip separator row (|---|---|)
+    if (i < lines.length) {
+      final separatorLine = lines[i].trim();
+      if (separatorLine.startsWith('|') && 
+          separatorLine.contains('-') &&
+          !separatorLine.contains(RegExp(r'[a-zA-Z0-9]'))) {
+        i++;
+      }
+    }
+
+    // Parse data rows
+    while (i < lines.length) {
+      final line = lines[i].trim();
+      
+      // Stop if not a table row
+      if (!line.startsWith('|') || !line.endsWith('|')) {
+        break;
+      }
+
+      final cells = line
+          .substring(1, line.length - 1)
+          .split('|')
+          .map((cell) => _decodeHtmlEntities(cell.trim()))
+          .toList();
+      
+      if (cells.isNotEmpty) {
+        rows.add(cells);
+      }
+      i++;
+    }
+
+    return _ParseResult(
+      block: TableBlock(headers: headers, rows: rows),
+      nextIndex: i,
     );
   }
 
@@ -1077,16 +1160,38 @@ class MarkdownParser {
     );
   }
 
-  /// Strip HTML tags from string
+  /// Strip HTML tags from string and decode HTML entities
   String _stripHtmlTags(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&#x26;', '&')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#x20;', ' ');
+    final stripped = html.replaceAll(RegExp(r'<[^>]+>'), '');
+    return _decodeHtmlEntities(stripped);
+  }
+
+  /// Process table cell content - preserve button/link markup, strip other HTML
+  String _processTableCell(String cellContent) {
+    // Check if cell contains a button-style anchor
+    final buttonMatch = RegExp(
+      r'<a[^>]*class="button[^"]*"[^>]*>.*?</a>',
+      dotAll: true,
+    ).firstMatch(cellContent);
+
+    if (buttonMatch != null) {
+      // Return the button HTML preserved
+      return buttonMatch.group(0) ?? '';
+    }
+
+    // Check for regular anchor links (preserve them too)
+    final linkMatch = RegExp(
+      r'<a[^>]*href="[^"]*"[^>]*>[^<]+</a>',
+      dotAll: true,
+    ).firstMatch(cellContent);
+
+    if (linkMatch != null) {
+      // Return the anchor HTML preserved for link handling
+      return linkMatch.group(0) ?? '';
+    }
+
+    // Strip all other HTML tags
+    return _stripHtmlTags(cellContent);
   }
 }
 

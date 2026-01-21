@@ -38,11 +38,19 @@ class _GuestProfileView extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 40),
-          // Guest Avatar
-          Avatar(
-            size: 100,
-            initials: '?',
-            backgroundColor: theme.colorScheme.muted,
+          // Guest Avatar using RadixIcons.avatar
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.muted,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              RadixIcons.avatar,
+              size: 50,
+              color: theme.colorScheme.mutedForeground,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -61,9 +69,9 @@ class _GuestProfileView extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Sign In Button - Appropriately sized
+          // Sign In Button - triggers auth flow directly
           PrimaryButton(
-            onPressed: () => _showSignInSheet(context),
+            onPressed: () => _signInWithGoogle(context),
             child: const Text('Sign In'),
           ),
           const SizedBox(height: 40),
@@ -83,52 +91,10 @@ class _GuestProfileView extends StatelessWidget {
     );
   }
 
-  void _showSignInSheet(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Sign In'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Sign in to save your preferences and access personalized features.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.mutedForeground,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlineButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    final authProvider = context.read<AuthProvider>();
-                    await authProvider.signInWithGoogle();
-                  },
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.account_circle),
-                      SizedBox(width: 12),
-                      Text('Continue with Google'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
+  /// Trigger Google Sign In directly
+  void _signInWithGoogle(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.signInWithGoogle();
   }
 
   Widget _buildSettingsSection(BuildContext context) {
@@ -154,18 +120,36 @@ class _AuthenticatedProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = authProvider.user;
+    final photoUrl = user?.photoUrl;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Profile Avatar
-          Avatar(
-            size: 100,
-            initials: user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-            backgroundColor: theme.colorScheme.primary,
-          ),
+          // Profile Avatar - use Google profile image if available
+          if (photoUrl != null && photoUrl.isNotEmpty)
+            ClipOval(
+              child: Image.network(
+                photoUrl,
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Avatar(
+                    size: 100,
+                    initials: user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+                    backgroundColor: theme.colorScheme.primary,
+                  );
+                },
+              ),
+            )
+          else
+            Avatar(
+              size: 100,
+              initials: user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+              backgroundColor: theme.colorScheme.primary,
+            ),
           const SizedBox(height: 16),
 
           // User Name with Edit Button
@@ -207,22 +191,35 @@ class _AuthenticatedProfileView extends StatelessWidget {
           _AppInfoSection(),
           const SizedBox(height: 24),
 
-          // Logout Button
+          // Logout Button - Red color with proper destructive styling
           SizedBox(
             width: double.infinity,
-            child: DestructiveButton(
-              onPressed: () => _showLogoutConfirmation(context),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.logout),
-                  SizedBox(width: 8),
-                  Text('Sign Out'),
-                ],
+            child: GestureDetector(
+              onTap: () => _showLogoutConfirmation(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 100),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -247,12 +244,25 @@ class _AuthenticatedProfileView extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            DestructiveButton(
-              onPressed: () async {
+            GestureDetector(
+              onTap: () async {
                 Navigator.of(context).pop();
                 await authProvider.signOut();
               },
-              child: const Text('Sign Out'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
           ],
         );
@@ -377,17 +387,18 @@ class _ThemeSegmentedButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ThemeOption(
-            icon: Icons.phone_android,
-            tooltip: 'System',
-            isSelected: currentMode == ThemeMode.system,
-            onTap: () => themeProvider.setThemeMode(ThemeMode.system),
-          ),
+          // Reordered: Light, System, Dark
           _ThemeOption(
             icon: Icons.light_mode,
             tooltip: 'Light',
             isSelected: currentMode == ThemeMode.light,
             onTap: () => themeProvider.setThemeMode(ThemeMode.light),
+          ),
+          _ThemeOption(
+            icon: Icons.phone_android,
+            tooltip: 'System',
+            isSelected: currentMode == ThemeMode.system,
+            onTap: () => themeProvider.setThemeMode(ThemeMode.system),
           ),
           _ThemeOption(
             icon: Icons.dark_mode,
@@ -471,14 +482,41 @@ class _QuickLinksSection extends StatelessWidget {
             ),
           ),
           _SettingsListTile(
-            icon: Icons.group,
-            title: 'Join Your Friends',
-            onTap: () => _launchUrl('https://discord.com/invite/AQ7PNzdCnC'),
+            icon: Icons.help_outline,
+            title: 'How to use database?',
+            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/how-to-use-database'),
+          ),
+          _SettingsListTile(
+            icon: Icons.handshake_outlined,
+            title: 'How to collaborate?',
+            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/how-to-collaborate'),
+          ),
+          _SettingsListTile(
+            icon: Icons.people_outline,
+            title: 'Collaborators',
+            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/collaborators'),
           ),
           _SettingsListTile(
             icon: Icons.star_outline,
-            title: 'STAR on GitHub',
-            onTap: () => _launchUrl('https://github.com/mantavyam/vaultscapesDB'),
+            title: 'Rate App on Play Store',
+            onTap: () {
+              showToast(
+                context: context,
+                builder: (context, overlay) {
+                  return SurfaceCard(
+                    child: Basic(
+                      title: const Text('Coming soon'),
+                      subtitle: const Text('Play Store review will be available after release'),
+                      trailing: IconButton.ghost(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => overlay.close(),
+                      ),
+                    ),
+                  );
+                },
+                location: ToastLocation.bottomCenter,
+              );
+            },
           ),
           _SettingsListTile(
             icon: Icons.description,
@@ -509,56 +547,64 @@ class _AppInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Image.asset(
-              'assets/images/app_logo.png',
-              width: 60,
-              height: 60,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Use app icon from assets
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  'assets/images/launcher.png',
                   width: 60,
                   height: 60,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.school,
-                    color: theme.colorScheme.primaryForeground,
-                    size: 30,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              AppConstants.appName,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.school,
+                        color: theme.colorScheme.primaryForeground,
+                        size: 30,
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Version ${AppConstants.appVersion}',
-              style: TextStyle(
-                color: theme.colorScheme.mutedForeground,
+              const SizedBox(height: 12),
+              const Text(
+                AppConstants.appName,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'An Open Source Database for Collaborating at an Institution, Created with <3 by Mantavyam Studios (INDIA) Ltd.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: theme.colorScheme.mutedForeground,
-                fontSize: 12,
+              const SizedBox(height: 4),
+              Text(
+                'Version ${AppConstants.appVersion}',
+                style: TextStyle(
+                  color: theme.colorScheme.mutedForeground,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'An Open Source Database for Collaborating at an Institution, Created with <3 by Mantavyam Studios (INDIA) Ltd.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: theme.colorScheme.mutedForeground,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

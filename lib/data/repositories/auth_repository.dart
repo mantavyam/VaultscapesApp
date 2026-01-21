@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
+import '../services/firebase_auth_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/error/exceptions.dart';
 
@@ -8,15 +9,33 @@ import '../../core/error/exceptions.dart';
 class AuthRepository {
   static const String _userKey = 'current_user';
   static const String _isAuthenticatedKey = 'is_authenticated';
+  static const String _homepagePreferenceKey = 'homepage_preference';
 
   SharedPreferences? _prefs;
+  final FirebaseAuthService _firebaseAuthService;
+
+  AuthRepository({FirebaseAuthService? firebaseAuthService})
+      : _firebaseAuthService = firebaseAuthService ?? FirebaseAuthService();
 
   Future<SharedPreferences> get prefs async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
   }
 
-  /// Perform mock authentication (Phase 1)
+  /// Sign in with Google using Firebase
+  Future<UserModel> signInWithGoogle() async {
+    final user = await _firebaseAuthService.signInWithGoogle();
+    
+    // Load any saved preferences and merge with user
+    final prefs = await this.prefs;
+    final homepagePreference = prefs.getString(_homepagePreferenceKey);
+    final userWithPrefs = user.copyWith(homepagePreference: homepagePreference);
+    
+    await _saveUser(userWithPrefs);
+    return userWithPrefs;
+  }
+
+  /// Perform mock authentication (fallback for testing)
   Future<UserModel> mockAuthenticate({String? name, String? email}) async {
     // Simulate network delay
     await Future.delayed(AppConstants.mockAuthDelay);
@@ -33,9 +52,19 @@ class AuthRepository {
     return user;
   }
 
-  /// Get current user
+  /// Get current user (checks Firebase first, then local cache)
   Future<UserModel?> getCurrentUser() async {
     try {
+      // First check Firebase auth state
+      final firebaseUser = _firebaseAuthService.getCurrentUserModel();
+      if (firebaseUser != null) {
+        // Load preferences and merge
+        final prefs = await this.prefs;
+        final homepagePreference = prefs.getString(_homepagePreferenceKey);
+        return firebaseUser.copyWith(homepagePreference: homepagePreference);
+      }
+
+      // Fall back to local cache (for guest users)
       final prefs = await this.prefs;
       final userJson = prefs.getString(_userKey);
       if (userJson == null) return null;
@@ -47,6 +76,11 @@ class AuthRepository {
 
   /// Check if user is authenticated
   Future<bool> isAuthenticated() async {
+    // Check Firebase first
+    if (_firebaseAuthService.currentUser != null) {
+      return true;
+    }
+    
     final prefs = await this.prefs;
     return prefs.getBool(_isAuthenticatedKey) ?? false;
   }
@@ -59,6 +93,17 @@ class AuthRepository {
 
   /// Update display name
   Future<UserModel> updateDisplayName(String name) async {
+    // Check if Firebase user exists
+    if (_firebaseAuthService.currentUser != null) {
+      final updatedUser = await _firebaseAuthService.updateDisplayName(name);
+      final prefs = await this.prefs;
+      final homepagePreference = prefs.getString(_homepagePreferenceKey);
+      final userWithPrefs = updatedUser.copyWith(homepagePreference: homepagePreference);
+      await _saveUser(userWithPrefs);
+      return userWithPrefs;
+    }
+
+    // Fallback to local cache
     final currentUser = await getCurrentUser();
     if (currentUser == null) {
       throw AuthException('No user logged in');
@@ -74,6 +119,15 @@ class AuthRepository {
     if (currentUser == null) {
       throw AuthException('No user logged in');
     }
+    
+    // Save preference separately so it persists across sessions
+    final prefs = await this.prefs;
+    if (preference != null) {
+      await prefs.setString(_homepagePreferenceKey, preference);
+    } else {
+      await prefs.remove(_homepagePreferenceKey);
+    }
+    
     final updatedUser = currentUser.copyWith(homepagePreference: preference);
     await _saveUser(updatedUser);
     return updatedUser;
@@ -81,6 +135,14 @@ class AuthRepository {
 
   /// Logout
   Future<void> logout() async {
+    // Sign out from Firebase
+    try {
+      await _firebaseAuthService.signOut();
+    } catch (e) {
+      // Continue even if Firebase sign out fails
+    }
+    
+    // Clear local data
     final prefs = await this.prefs;
     await prefs.remove(_userKey);
     await prefs.setBool(_isAuthenticatedKey, false);
