@@ -191,7 +191,7 @@ class _AuthenticatedProfileView extends StatelessWidget {
           _AppInfoSection(),
           const SizedBox(height: 24),
 
-          // Logout Button - Red color with proper destructive styling
+          // Logout Button - Outlined red style
           SizedBox(
             width: double.infinity,
             child: GestureDetector(
@@ -199,18 +199,22 @@ class _AuthenticatedProfileView extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626),
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFDC2626),
+                    width: 1.5,
+                  ),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout, color: Colors.white, size: 20),
+                    Icon(Icons.logout, color: Color(0xFFDC2626), size: 20),
                     SizedBox(width: 8),
                     Text(
                       'Sign Out',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFFDC2626),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -285,28 +289,56 @@ class _SettingsSection extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Settings',
+              'Management',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+          // Your Collaboration tile
+          _SettingsListTile(
+            icon: Icons.upload_file_outlined,
+            title: 'Your Collaborations',
+            subtitle: 'View your submitted contributions',
+            onTap: () => _navigateToCollaborationHistory(context),
+          ),
+          // Your Feedback tile
+          _SettingsListTile(
+            icon: Icons.feedback_outlined,
+            title: 'Your Feedback',
+            subtitle: 'View your submitted feedback',
+            onTap: () => _navigateToFeedbackHistory(context),
+          ),
           // Inline Theme Selector
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 Icon(
                   Icons.palette,
                   color: theme.colorScheme.mutedForeground,
-                  size: 22,
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Theme',
-                    style: TextStyle(fontSize: 16),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Theme',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Choose app appearance',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Segmented button for theme selection
@@ -314,56 +346,17 @@ class _SettingsSection extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          _SettingsListTile(
-            icon: Icons.notifications,
-            title: 'Notifications',
-            subtitle: 'Manage notification preferences',
-            onTap: () {
-              showToast(
-                context: context,
-                builder: (context, overlay) {
-                  return SurfaceCard(
-                    child: Basic(
-                      title: const Text('Coming soon'),
-                      subtitle: const Text('Notification settings will be available in a future update'),
-                      trailing: IconButton.ghost(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => overlay.close(),
-                      ),
-                    ),
-                  );
-                },
-                location: ToastLocation.bottomCenter,
-              );
-            },
-          ),
-          _SettingsListTile(
-            icon: Icons.download,
-            title: 'Downloads',
-            subtitle: 'Manage downloaded content',
-            onTap: () {
-              showToast(
-                context: context,
-                builder: (context, overlay) {
-                  return SurfaceCard(
-                    child: Basic(
-                      title: const Text('Coming soon'),
-                      subtitle: const Text('Download management will be available in a future update'),
-                      trailing: IconButton.ghost(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => overlay.close(),
-                      ),
-                    ),
-                  );
-                },
-                location: ToastLocation.bottomCenter,
-              );
-            },
-          ),
         ],
       ),
     );
+  }
+
+  void _navigateToCollaborationHistory(BuildContext context) {
+    context.push('/main/profile/collaboration-history');
+  }
+
+  void _navigateToFeedbackHistory(BuildContext context) {
+    context.push('/main/profile/feedback-history');
   }
 }
 

@@ -1,0 +1,93 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is the owner of the file (based on path containing their UID)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if the user is an admin
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.uid in ['YOUR_ADMIN_UID_1', 'YOUR_ADMIN_UID_2']
+      );
+    }
+    
+    // Check file size (max 25MB per file)
+    function isValidFileSize() {
+      return request.resource.size < 25 * 1024 * 1024;
+    }
+    
+    // Check for allowed content types for attachments
+    function isValidContentType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*') ||
+             request.resource.contentType.matches('text/.*');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FEEDBACK ATTACHMENTS
+    // Path: form-data/feedback-attach/{userId}/{filename}
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    match /form-data/feedback-attach/{userId}/{allPaths=**} {
+      // Allow authenticated users to upload to their own folder
+      allow create: if isOwner(userId)
+                    && isValidFileSize()
+                    && isValidContentType();
+      
+      // Allow users to read their own files
+      allow read: if isOwner(userId);
+      
+      // Users cannot update or delete (prevents tampering with evidence)
+      allow update, delete: if isAdmin();
+      
+      // Admins can read all files
+      allow read: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // COLLABORATION ATTACHMENTS
+    // Path: form-data/collaborate-attach/{userId}/{filename}
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    match /form-data/collaborate-attach/{userId}/{allPaths=**} {
+      // Allow authenticated users to upload to their own folder
+      allow create: if isOwner(userId)
+                    && isValidFileSize()
+                    && isValidContentType();
+      
+      // Allow users to read their own files
+      allow read: if isOwner(userId);
+      
+      // Users cannot update or delete (prevents tampering with submissions)
+      allow update, delete: if isAdmin();
+      
+      // Admins can read all files
+      allow read: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DEFAULT DENY
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Deny access to all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

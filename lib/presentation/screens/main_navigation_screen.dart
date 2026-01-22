@@ -12,15 +12,17 @@ import 'profile/profile_screen.dart';
 /// Swipe navigation is disabled on Breakthrough (index 1) only for authenticated users
 /// to prevent interference with vertical scrolling in webview content
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final int initialTab;
+  
+  const MainNavigationScreen({super.key, this.initialTab = 0});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-  final List<int> _navigationHistory = [0]; // Track tab navigation history
+  late int _currentIndex;
+  late List<int> _navigationHistory;
   late PageController _pageController;
 
   // Use PageView to enable swipe gestures between tabs
@@ -34,7 +36,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _currentIndex = widget.initialTab;
+    _navigationHistory = [widget.initialTab];
+    _pageController = PageController(initialPage: widget.initialTab);
     // Load semesters when main screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NavigationProvider>().loadSemesters();

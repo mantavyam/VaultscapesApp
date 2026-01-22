@@ -1,8 +1,32 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../../providers/auth_provider.dart';
 import 'feedback_form_tab.dart';
 import 'collaborate_form_tab.dart';
+import 'submission_success_screen.dart';
+
+/// Form Spacing Constants following 8-point grid system
+class FormSpacing {
+  static const double xs = 4.0;
+  static const double sm = 8.0;
+  static const double md = 16.0;
+  static const double lg = 24.0;
+  static const double xl = 32.0;
+  static const double xxl = 48.0;
+  static const double xxxl = 64.0;
+}
+
+/// Form Dimensions
+class FormDimensions {
+  static const double inputHeight = 56.0;
+  static const double buttonHeight = 56.0;
+  static const double minTouchTarget = 48.0;
+  static const double borderRadius = 8.0;
+  static const double cardRadius = 12.0;
+  static const double sectionRadius = 16.0;
+  static const double maxFormWidth = 640.0;
+}
 
 /// Feedback and Collaboration screen with two stacked cards
 class FeedbackCollaborateScreen extends StatefulWidget {
@@ -15,16 +39,32 @@ class FeedbackCollaborateScreen extends StatefulWidget {
 
 class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   String? _selectedSection;
+  SubmissionSuccessType? _showSuccess;
 
   void _goBack() {
-    if (_selectedSection != null) {
+    if (_showSuccess != null) {
+      // From success screen, go back to selection
+      setState(() {
+        _showSuccess = null;
+        _selectedSection = null;
+      });
+    } else if (_selectedSection != null) {
       setState(() => _selectedSection = null);
     }
+  }
+
+  void _onSubmissionSuccess(SubmissionSuccessType type) {
+    setState(() => _showSuccess = type);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Show success screen if submission was successful
+    if (_showSuccess != null) {
+      return SubmissionSuccessScreen(type: _showSuccess!, onDone: _goBack);
+    }
 
     return PopScope(
       canPop: _selectedSection == null,
@@ -46,9 +86,11 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                       onPressed: _goBack,
                     ),
                   ],
-                  title: Text(_selectedSection == 'feedback'
-                      ? 'Provide Feedback'
-                      : 'Collaborate Now'),
+                  title: Text(
+                    _selectedSection == 'feedback'
+                        ? 'Provide Feedback'
+                        : 'Collaborate Now',
+                  ),
                 ),
               ],
               child: _buildAuthBarrier(context, theme),
@@ -65,17 +107,26 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                           onPressed: _goBack,
                         ),
                       ],
-                      title: Text(_selectedSection == 'feedback'
-                          ? 'Provide Feedback'
-                          : 'Collaborate Now'),
+                      title: Text(
+                        _selectedSection == 'feedback'
+                            ? 'Provide Feedback'
+                            : 'Collaborate Now',
+                      ),
                     ),
                   ]
                 : [],
             child: _selectedSection == null
                 ? _buildSelectionScreen(theme)
                 : _selectedSection == 'feedback'
-                    ? const FeedbackFormTab()
-                    : const CollaborateFormTab(),
+                ? FeedbackFormTab(
+                    onSubmissionSuccess: () =>
+                        _onSubmissionSuccess(SubmissionSuccessType.feedback),
+                  )
+                : CollaborateFormTab(
+                    onSubmissionSuccess: () => _onSubmissionSuccess(
+                      SubmissionSuccessType.collaboration,
+                    ),
+                  ),
           );
         },
       ),
@@ -84,61 +135,76 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
 
   Widget _buildAuthBarrier(BuildContext context, ThemeData theme) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.lock_outline,
-              size: 64,
-              color: theme.colorScheme.mutedForeground,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Sign Up / Login to proceed',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.foreground,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(FormSpacing.xl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Lock Icon with subtle background
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.muted.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 48,
+                  color: theme.colorScheme.mutedForeground,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Feature is Available for FREE only to Logged In Users of Vaultscapes',
-              style: TextStyle(
-                fontSize: 14,
-                color: theme.colorScheme.mutedForeground,
+              const SizedBox(height: FormSpacing.xl),
+              Text(
+                'Sign In Required',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.foreground,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            PrimaryButton(
-              onPressed: () {
-                // Navigate to profile tab for sign in
-                // This will be handled by the main navigation
-                showToast(
-                  context: context,
-                  builder: (context, overlay) {
-                    return SurfaceCard(
-                      child: Basic(
-                        title: const Text('Sign In Required'),
-                        subtitle: const Text('Please go to Profile tab to sign in'),
-                        leading: const Icon(Icons.person),
-                        trailing: IconButton.ghost(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => overlay.close(),
+              const SizedBox(height: FormSpacing.sm),
+              Text(
+                'This feature is available for free to all logged-in users of Vaultscapes.',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: theme.colorScheme.mutedForeground,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: FormSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                height: FormDimensions.buttonHeight,
+                child: PrimaryButton(
+                  onPressed: () {
+                    // Trigger auth flow directly
+                    final authProvider = context.read<AuthProvider>();
+                    authProvider.signInWithGoogle();
+                  },
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.login_rounded, size: 20),
+                      SizedBox(width: FormSpacing.sm),
+                      Text(
+                        'Sign Up / Login to proceed',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    );
-                  },
-                  location: ToastLocation.bottomCenter,
-                );
-              },
-              child: const Text('Go to Sign In'),
-            ),
-          ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -148,39 +214,45 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(FormSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: FormSpacing.md),
 
               // Feedback Card
               Expanded(
                 child: _buildSelectionCard(
                   context: context,
                   theme: theme,
-                  icon: Icons.bolt,
+                  icon: Icons.bolt_rounded,
                   title: 'Provide\nFeedback',
-                  subtitle: 'Report/Suggest/Improve',
-                  badgeText: 'Help Us Serve you Better',
+                  subtitle: 'Report · Suggest · Improve',
+                  badgeText: 'Help Us Serve You Better',
                   onTap: () => setState(() => _selectedSection = 'feedback'),
-                  color: theme.colorScheme.primary,
+                  gradientColors: [
+                    const Color(0xFF0EA5E9),
+                    const Color(0xFF06B6D4),
+                  ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: FormSpacing.md),
 
               // Collaborate Card
               Expanded(
                 child: _buildSelectionCard(
                   context: context,
                   theme: theme,
-                  icon: Icons.handshake_outlined,
+                  icon: Icons.handshake_rounded,
                   title: 'Collaborate\nNow',
-                  subtitle: 'Submit/Share/Contribute',
+                  subtitle: 'Submit · Share · Contribute',
                   badgeText: 'Join the Community',
                   onTap: () => setState(() => _selectedSection = 'collaborate'),
-                  color: theme.colorScheme.secondary,
+                  gradientColors: [
+                    const Color(0xFF0EA5E9),
+                    const Color(0xFF06B6D4),
+                  ],
                 ),
               ),
             ],
@@ -198,49 +270,68 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     required String subtitle,
     required String badgeText,
     required VoidCallback onTap,
-    required Color color,
+    required List<Color> gradientColors,
   }) {
     final isDark = theme.brightness == Brightness.dark;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate proportional sizes based on card dimensions
         final cardHeight = constraints.maxHeight;
         final cardWidth = constraints.maxWidth;
         final minDimension = cardHeight < cardWidth ? cardHeight : cardWidth;
-        
+
         // Proportional sizing (relative to card height)
-        final iconSize = (minDimension * 0.10).clamp(20.0, 32.0);
-        final titleFontSize = (minDimension * 0.14).clamp(20.0, 36.0);
-        final subtitleFontSize = (minDimension * 0.065).clamp(12.0, 18.0);
-        final badgeFontSize = (minDimension * 0.055).clamp(10.0, 16.0);
-        final buttonSize = (minDimension * 0.22).clamp(40.0, 64.0);
-        final padding = (minDimension * 0.10).clamp(16.0, 32.0);
-        final buttonIconSize = buttonSize * 0.42;
+        final iconSize = (minDimension * 0.12).clamp(24.0, 36.0);
+        final titleFontSize = (minDimension * 0.14).clamp(22.0, 38.0);
+        final subtitleFontSize = (minDimension * 0.06).clamp(12.0, 16.0);
+        final badgeFontSize = (minDimension * 0.05).clamp(10.0, 14.0);
+        final buttonSize = (minDimension * 0.20).clamp(44.0, 60.0);
+        final padding = (minDimension * 0.10).clamp(20.0, 32.0);
+        final buttonIconSize = buttonSize * 0.45;
 
         return GestureDetector(
           onTap: onTap,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
-              color: theme.colorScheme.card,
-              borderRadius: BorderRadius.circular(32),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? gradientColors
+                          .map((c) => c.withValues(alpha: 0.15))
+                          .toList()
+                    : gradientColors
+                          .map((c) => c.withValues(alpha: 0.08))
+                          .toList(),
+              ),
+              borderRadius: BorderRadius.circular(FormSpacing.lg),
               border: Border.all(
-                color: theme.colorScheme.border,
-                width: 1,
+                color: isDark
+                    ? gradientColors[0].withValues(alpha: 0.3)
+                    : gradientColors[0].withValues(alpha: 0.2),
+                width: 1.5,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top-left icon
-                Icon(
-                  icon,
-                  size: iconSize,
-                  color: theme.colorScheme.foreground,
+                // Top-left icon with background
+                Container(
+                  width: iconSize * 1.6,
+                  height: iconSize * 1.6,
+                  decoration: BoxDecoration(
+                    color: gradientColors[0].withValues(
+                      alpha: isDark ? 0.2 : 0.15,
+                    ),
+                    borderRadius: BorderRadius.circular(
+                      FormDimensions.borderRadius,
+                    ),
+                  ),
+                  child: Icon(icon, size: iconSize, color: gradientColors[0]),
                 ),
-                
-                // Flexible spacer to push content down
+
                 const Spacer(flex: 2),
 
                 // Title section
@@ -250,73 +341,81 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                     fontSize: titleFontSize,
                     fontWeight: FontWeight.w800,
                     color: theme.colorScheme.foreground,
-                    height: 1.0,
+                    height: 1.05,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                SizedBox(height: minDimension * 0.025),
+                SizedBox(height: minDimension * 0.03),
                 Text(
                   subtitle,
                   style: TextStyle(
                     fontSize: subtitleFontSize,
                     fontWeight: FontWeight.w500,
                     color: theme.colorScheme.mutedForeground,
+                    letterSpacing: 0.3,
                   ),
                 ),
-                
-                // Flexible spacer before bottom row
+
                 const Spacer(flex: 1),
 
                 // Bottom row with badge and circle button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Bottom-left badge
                     Flexible(
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: padding * 0.5,
-                          vertical: padding * 0.3,
+                          horizontal: padding * 0.6,
+                          vertical: padding * 0.35,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.15)
-                              : Colors.black.withValues(alpha: 0.1),
+                          color: gradientColors[0].withValues(
+                            alpha: isDark ? 0.2 : 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Text(
                           badgeText,
                           style: TextStyle(
                             fontSize: badgeFontSize,
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.foreground,
+                            fontWeight: FontWeight.w600,
+                            color: gradientColors[0],
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
-                    
+
                     SizedBox(width: padding * 0.5),
 
-                    // Bottom-right circle button with arrow
+                    // Bottom-right circle button with tilted arrow
                     Container(
                       width: buttonSize,
                       height: buttonSize,
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white : Colors.black,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: gradientColors,
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            color: gradientColors[0].withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.arrow_outward,
-                        size: buttonIconSize,
-                        color: isDark ? Colors.black : Colors.white,
+                      child: Transform.rotate(
+                        angle: -math.pi / 4, // -45 degrees (tilted up-right)
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: buttonIconSize,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ],

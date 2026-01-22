@@ -9,6 +9,8 @@ import '../screens/home/semester_overview_screen.dart';
 import '../screens/home/subject_detail_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
 import '../screens/profile/terms_of_service_screen.dart';
+import '../screens/profile/feedback_history_screen.dart';
+import '../screens/profile/collaboration_history_screen.dart';
 import '../screens/content/gitbook_content_screen.dart';
 
 /// App router configuration using go_router
@@ -103,6 +105,23 @@ class AppRouter {
             },
           ),
         ],
+      ),
+      // Profile sub-routes (accessible from profile screen)
+      GoRoute(
+        path: '/main/profile/feedback-history',
+        name: 'feedback-history',
+        builder: (context, state) => const FeedbackHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/main/profile/collaboration-history',
+        name: 'collaboration-history',
+        builder: (context, state) => const CollaborationHistoryScreen(),
+      ),
+      // Synergy route for navigating from empty history states
+      GoRoute(
+        path: '/main/synergy',
+        name: 'synergy',
+        builder: (context, state) => const MainNavigationScreen(initialTab: 2),
       ),
     ],
     errorBuilder: (context, state) => _ErrorScreen(error: state.error),

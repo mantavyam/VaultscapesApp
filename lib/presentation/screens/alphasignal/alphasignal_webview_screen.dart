@@ -18,7 +18,8 @@ class AlphaSignalWebViewScreen extends StatefulWidget {
 }
 
 class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
-  late WebViewController _controller;
+  WebViewController? _controller;
+  bool _isControllerInitialized = false;
   bool _hasError = false;
   double _loadingProgress = 0;
   bool _canGoBack = false;
@@ -408,9 +409,21 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   @override
   void initState() {
     super.initState();
-    // Only initialize WebView for authenticated users to prevent background fetching
+    // Check auth state and initialize if authenticated
+    _checkAndInitializeWebView();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-check when dependencies (like auth state) change
+    _checkAndInitializeWebView();
+  }
+
+  /// Check auth state and initialize WebView if authenticated and not yet initialized
+  void _checkAndInitializeWebView() {
     final authProvider = context.read<AuthProvider>();
-    if (authProvider.isAuthenticated) {
+    if (authProvider.isAuthenticated && !_isControllerInitialized) {
       _initWebView();
     }
   }
@@ -431,6 +444,8 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   }
 
   void _initWebView() {
+    if (_isControllerInitialized) return; // Prevent re-initialization
+    
     _setRandomLoadingText();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -461,7 +476,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             // Apply JavaScript to hide elements based on URL
             if (_isAlphaSignalEmailPage(url)) {
               debugPrint('WebView: Running hide elements JS');
-              await _controller.runJavaScript(_hideEmailElementsJs);
+              await _controller!.runJavaScript(_hideEmailElementsJs);
               
               // Inject user's name and remove logo
               await _injectUserNameAndRemoveLogo();
@@ -469,7 +484,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
               // Apply dark mode if device theme is dark
               if (isDarkMode) {
                 debugPrint('WebView: Applying dark mode for email content');
-                await _controller.runJavaScript(_darkModeEmailJs);
+                await _controller!.runJavaScript(_darkModeEmailJs);
               }
             }
 
@@ -484,7 +499,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             });
 
             // Update back navigation state
-            final canGoBack = await _controller.canGoBack();
+            final canGoBack = await _controller!.canGoBack();
             if (!mounted) return;
             setState(() {
               _canGoBack = canGoBack;
@@ -510,6 +525,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+    
+    _isControllerInitialized = true;
+    if (mounted) setState(() {});
   }
 
   /// Inject logged-in user's name and remove AlphaSignal logo
@@ -575,23 +593,23 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         })();
       ''';
       
-      await _controller.runJavaScript(injectionJs);
+      await _controller?.runJavaScript(injectionJs);
       
       // Retry after delays to catch dynamically loaded content
       // Also reapply dark mode if needed
       Future.delayed(const Duration(milliseconds: 500), () async {
-        if (mounted) {
-          await _controller.runJavaScript(injectionJs);
+        if (mounted && _controller != null) {
+          await _controller!.runJavaScript(injectionJs);
           if (isDarkMode) {
-            await _controller.runJavaScript(_darkModeEmailJs);
+            await _controller!.runJavaScript(_darkModeEmailJs);
           }
         }
       });
       Future.delayed(const Duration(milliseconds: 1500), () async {
-        if (mounted) {
-          await _controller.runJavaScript(injectionJs);
+        if (mounted && _controller != null) {
+          await _controller!.runJavaScript(injectionJs);
           if (isDarkMode) {
-            await _controller.runJavaScript(_darkModeEmailJs);
+            await _controller!.runJavaScript(_darkModeEmailJs);
           }
         }
       });
@@ -608,10 +626,11 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
 
   /// Navigate back in WebView history, or reset to default URL
   Future<bool> _handleBackNavigation() async {
-    if (await _controller.canGoBack()) {
-      await _controller.goBack();
+    if (_controller == null) return false;
+    if (await _controller!.canGoBack()) {
+      await _controller!.goBack();
       // Update back state after navigation
-      final canGoBack = await _controller.canGoBack();
+      final canGoBack = await _controller!.canGoBack();
       if (!mounted) return true;
       setState(() {
         _canGoBack = canGoBack;
@@ -623,19 +642,19 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
 
   /// Reset WebView to the default URL
   void _resetToDefaultUrl() {
-    if (!mounted) return;
+    if (!mounted || _controller == null) return;
     setState(() {
       _hasError = false;
       _loadingProgress = 0;
       _canGoBack = false;
       _isContentReady = false;
     });
-    _controller.loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+    _controller!.loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
   }
 
   /// Load a specific URL in the main webview
   void _loadUrl(String url) {
-    if (!mounted) return;
+    if (!mounted || _controller == null) return;
     _setRandomLoadingText();
     setState(() {
       _hasError = false;
@@ -643,7 +662,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       _isContentReady = false;
       _isNavigating = false;
     });
-    _controller.loadRequest(Uri.parse(url));
+    _controller!.loadRequest(Uri.parse(url));
   }
 
   /// Show archive dialog (styled like bottom sheet for scroll support)
@@ -710,6 +729,17 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         // Show auth barrier if not authenticated
         if (!authProvider.isAuthenticated) {
           return _buildAuthBarrier(context, theme);
+        }
+
+        // Initialize WebView if authenticated but not yet initialized
+        // This handles the case when user signs in while on this screen
+        if (!_isControllerInitialized) {
+          // Schedule initialization for after this build frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_isControllerInitialized) {
+              _initWebView();
+            }
+          });
         }
 
         return PopScope(
@@ -846,6 +876,23 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   Widget _buildWebView() {
     final theme = Theme.of(context);
 
+    // Guard: if controller not initialized, show loading
+    if (!_isControllerInitialized || _controller == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Initializing...',
+              style: TextStyle(color: theme.colorScheme.mutedForeground),
+            ),
+          ],
+        ),
+      );
+    }
+
     debugPrint(
       'Building WebView: _isContentReady=$_isContentReady, _isNavigating=$_isNavigating',
     );
@@ -853,7 +900,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
     return Stack(
       children: [
         // Always show the WebView, don't hide it
-        Positioned.fill(child: WebViewWidget(controller: _controller)),
+        Positioned.fill(child: WebViewWidget(controller: _controller!)),
         // Show loading overlay until content is ready
         if (!_isContentReady || _isNavigating)
           Positioned.fill(
@@ -892,14 +939,14 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   }
 
   void _refresh() {
-    if (!mounted) return;
+    if (!mounted || _controller == null) return;
     _setRandomLoadingText();
     setState(() {
       _hasError = false;
       _loadingProgress = 0;
       _isContentReady = false;
     });
-    _controller.reload();
+    _controller!.reload();
   }
 }
 

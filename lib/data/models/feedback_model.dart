@@ -1,6 +1,7 @@
-/// Feedback form model
+/// Feedback form model - Firestore collection: 'feedback-submit'
 class FeedbackModel {
   final String? id;
+  final String? userId; // Firebase Auth UID
   final String name;
   final String email;
   final UserRole role;
@@ -9,12 +10,15 @@ class FeedbackModel {
   final FeedbackType feedbackType;
   final String description;
   final String? pageUrl;
-  final List<String> attachmentPaths;
+  final List<String> attachmentPaths; // Local paths before upload
+  final List<String> attachmentUrls; // Firebase Storage URLs after upload
   final int? usabilityRating;
   final DateTime submittedAt;
+  final String status; // 'pending', 'reviewed', 'resolved'
 
   FeedbackModel({
     this.id,
+    this.userId,
     required this.name,
     required this.email,
     required this.role,
@@ -24,13 +28,35 @@ class FeedbackModel {
     required this.description,
     this.pageUrl,
     this.attachmentPaths = const [],
+    this.attachmentUrls = const [],
     this.usabilityRating,
     DateTime? submittedAt,
+    this.status = 'pending',
   }) : submittedAt = submittedAt ?? DateTime.now();
+
+  /// Convert to Firestore document format
+  Map<String, dynamic> toFirestore() {
+    return {
+      'userId': userId,
+      'name': name,
+      'email': email,
+      'role': role.name,
+      'usageFrequency': usageFrequency.map((e) => e.name).toList(),
+      'semesterSelection': semesterSelection,
+      'feedbackType': feedbackType.name,
+      'description': description,
+      'pageUrl': pageUrl,
+      'attachmentUrls': attachmentUrls,
+      'usabilityRating': usabilityRating,
+      'submittedAt': submittedAt.toIso8601String(),
+      'status': status,
+    };
+  }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userId': userId,
       'name': name,
       'email': email,
       'role': role.name,
@@ -40,14 +66,17 @@ class FeedbackModel {
       'description': description,
       'pageUrl': pageUrl,
       'attachmentPaths': attachmentPaths,
+      'attachmentUrls': attachmentUrls,
       'usabilityRating': usabilityRating,
       'submittedAt': submittedAt.toIso8601String(),
+      'status': status,
     };
   }
 
   factory FeedbackModel.fromJson(Map<String, dynamic> json) {
     return FeedbackModel(
       id: json['id'] as String?,
+      userId: json['userId'] as String?,
       name: json['name'] as String,
       email: json['email'] as String,
       role: UserRole.values.firstWhere((e) => e.name == json['role']),
@@ -59,8 +88,52 @@ class FeedbackModel {
       description: json['description'] as String,
       pageUrl: json['pageUrl'] as String?,
       attachmentPaths: (json['attachmentPaths'] as List<dynamic>?)?.cast<String>() ?? [],
+      attachmentUrls: (json['attachmentUrls'] as List<dynamic>?)?.cast<String>() ?? [],
       usabilityRating: json['usabilityRating'] as int?,
       submittedAt: DateTime.parse(json['submittedAt'] as String),
+      status: json['status'] as String? ?? 'pending',
+    );
+  }
+
+  /// Create a copy with updated attachment URLs (after upload)
+  FeedbackModel copyWithUrls(List<String> urls) {
+    return FeedbackModel(
+      id: id,
+      userId: userId,
+      name: name,
+      email: email,
+      role: role,
+      usageFrequency: usageFrequency,
+      semesterSelection: semesterSelection,
+      feedbackType: feedbackType,
+      description: description,
+      pageUrl: pageUrl,
+      attachmentPaths: attachmentPaths,
+      attachmentUrls: urls,
+      usabilityRating: usabilityRating,
+      submittedAt: submittedAt,
+      status: status,
+    );
+  }
+
+  /// Create a copy with userId
+  FeedbackModel copyWithUserId(String uid) {
+    return FeedbackModel(
+      id: id,
+      userId: uid,
+      name: name,
+      email: email,
+      role: role,
+      usageFrequency: usageFrequency,
+      semesterSelection: semesterSelection,
+      feedbackType: feedbackType,
+      description: description,
+      pageUrl: pageUrl,
+      attachmentPaths: attachmentPaths,
+      attachmentUrls: attachmentUrls,
+      usabilityRating: usabilityRating,
+      submittedAt: submittedAt,
+      status: status,
     );
   }
 }
