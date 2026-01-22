@@ -1,35 +1,16 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/navigation/custom_bottom_nav_bar.dart';
 import 'home/root_homepage_screen.dart';
 import 'alphasignal/alphasignal_webview_screen.dart';
 import 'feedback_collaborate/feedback_collaborate_screen.dart';
 import 'profile/profile_screen.dart';
 
-/// Custom scroll physics with high drag threshold for PageView
-/// Prevents accidental page swipes when user is trying to scroll vertically
-class HighThresholdPageScrollPhysics extends PageScrollPhysics {
-  final double dragStartThreshold;
-  
-  const HighThresholdPageScrollPhysics({
-    super.parent,
-    this.dragStartThreshold = 80.0, // Require significant horizontal drag
-  });
-  
-  @override
-  HighThresholdPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return HighThresholdPageScrollPhysics(
-      parent: buildParent(ancestor),
-      dragStartThreshold: dragStartThreshold,
-    );
-  }
-  
-  @override
-  double get dragStartDistanceMotionThreshold => dragStartThreshold;
-}
-
-/// Main navigation screen with bottom navigation bar and swipe gesture support
+/// Main navigation screen with bottom navigation bar
+/// Swipe navigation is disabled on Breakthrough (index 1) only for authenticated users
+/// to prevent interference with vertical scrolling in webview content
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
@@ -130,32 +111,39 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _navigationHistory.length <= 1 && _currentIndex == 0,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) {
-          await _onWillPop();
-        }
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Disable swipe on Breakthrough screen only if user is authenticated
+        // Guest users can swipe through since they see the auth barrier
+        final shouldDisableSwipe = _currentIndex == 1 && authProvider.isAuthenticated;
+        
+        return PopScope(
+          canPop: _navigationHistory.length <= 1 && _currentIndex == 0,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (!didPop) {
+              await _onWillPop();
+            }
+          },
+          child: Scaffold(
+            footers: [
+              CustomBottomNavBar(
+                currentIndex: _currentIndex,
+                onTap: _onTabChanged,
+              ),
+            ],
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: _onPageChanged,
+              // Disable swipe navigation on Breakthrough only for authenticated users
+              // to prevent interference with iframe vertical scrolling
+              physics: shouldDisableSwipe
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(),
+              children: _screens,
+            ),
+          ),
+        );
       },
-      child: Scaffold(
-        footers: [
-          CustomBottomNavBar(
-            currentIndex: _currentIndex,
-            onTap: _onTabChanged,
-          ),
-        ],
-        child: PageView(
-          controller: _pageController,
-          onPageChanged: _onPageChanged,
-          // Use custom scroll physics with high threshold to prevent 
-          // accidental swipes when scrolling vertically in webview content
-          physics: const HighThresholdPageScrollPhysics(
-            parent: ClampingScrollPhysics(),
-            dragStartThreshold: 100.0, // Require 100px horizontal drag to start page switch
-          ),
-          children: _screens,
-        ),
-      ),
     );
   }
 }

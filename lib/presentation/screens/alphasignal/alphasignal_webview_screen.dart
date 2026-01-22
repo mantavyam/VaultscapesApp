@@ -25,6 +25,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   bool _isContentReady = false;
   bool _isNavigating = false;
   String _loadingText = 'Updated daily except weekends';
+  int _mainFrameErrorCount = 0; // Track main frame errors only
 
   // Random loading messages
   static const List<String> _loadingMessages = [
@@ -267,10 +268,151 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       return 'ok';
     })();
   ''';
+
+  // JavaScript to inject dark mode CSS for email content pages
+  // Based on Shadcn New York / Zinc Dark Palette
+  static const String _darkModeEmailJs = '''
+    (function() {
+      const darkCSS = `
+        /* Shadcn New York / Zinc Dark Palette */
+        :root {
+          --bg-background: #09090b;  /* Zinc 950 */
+          --bg-card: #09090b;        /* Zinc 950 */
+          --bg-popover: #09090b;     /* Zinc 950 */
+          --text-primary: #fafafa;   /* Zinc 50 */
+          --text-secondary: #a1a1aa; /* Zinc 400 */
+          --text-muted: #71717a;     /* Zinc 500 */
+          --border-zinc: #27272a;    /* Zinc 800 */
+          --accent-orange: #f97316;  /* Orange 500 */
+        }
+
+        /* Base Backgrounds */
+        body, table, td, .feedback-box { 
+            background-color: var(--bg-background) !important; 
+            color: var(--text-secondary) !important; 
+            border-color: var(--border-zinc) !important; 
+        }
+
+        /* Text Color Resets */
+        p, span, div, a, u, .h1, .p, td, tr { 
+            color: var(--text-secondary) !important; 
+            -webkit-text-fill-color: var(--text-secondary) !important;
+        }
+
+        /* Aggressive Targeting for Headings and Headlines - Pure Shadcn White */
+        .h1, 
+        td[class*="h1"], 
+        td[style*="font-weight:bold"], 
+        td[style*="font-weight: bold"], 
+        p[style*="font-weight:bold"], 
+        strong, b { 
+            color: var(--text-primary) !important; 
+            -webkit-text-fill-color: var(--text-primary) !important;
+            letter-spacing: -0.025em !important; /* New York Style subtle tracking */
+        }
+
+        /* Target specifically the white content boxes - Zinc Surface */
+        table[style*="background-color:#ffffff"], 
+        table[style*="background-color: #ffffff"], 
+        table[bgcolor="#ffffff"] { 
+            background-color: var(--bg-card) !important; 
+            border: 1px solid var(--border-zinc) !important; 
+        }
+
+        /* Maintain Greeting Block (Deepest Black) */
+        table[style*="background-color:#000000"], 
+        table[style*="background-color: #000000"], 
+        table[bgcolor="#000000"] { 
+            background-color: #000000 !important;
+            border: 1px solid var(--border-zinc) !important;
+        }
+
+        /* Divider Lines - Thin Zinc 800 */
+        td[style*="border-top"] { 
+            border-color: var(--border-zinc) !important; 
+        }
+
+        /* AlphaSignal Orange Accent */
+        span[style*="color:#f74904"], 
+        a[style*="color:#f74904"],
+        td[style*="color:#f74904"],
+        font[color="#f74904"] { 
+            color: var(--accent-orange) !important;
+            -webkit-text-fill-color: var(--accent-orange) !important;
+        }
+
+        /* Images and Icons - Modern Dimming */
+        img { 
+            border-color: var(--border-zinc) !important; 
+            filter: grayscale(0.2) brightness(0.8) contrast(1.1);
+            border-radius: 4px !important; 
+        }
+
+        /* Action Buttons - New York Black/White Style */
+        .btn, td[bgcolor="#f74904"] { 
+            background-color: var(--text-primary) !important; 
+            border: 1px solid var(--text-primary) !important; 
+        }
+        .btn a, .btn span { 
+            color: #000000 !important; 
+            -webkit-text-fill-color: #000000 !important;
+        }
+
+        /* Metadata/Small Text - Muted Zinc */
+        div[style*="color:#a1a1a1"], 
+        td[style*="color:#999999"],
+        td[style*="color:#a1a1a1"] { 
+            color: var(--text-muted) !important; 
+            -webkit-text-fill-color: var(--text-muted) !important;
+        }
+
+        /* Fix for nested link colors */
+        a[style*="color:#000000"], a[style*="color: #000000"] {
+            color: var(--text-primary) !important;
+            -webkit-text-fill-color: var(--text-primary) !important;
+            text-decoration-color: var(--border-zinc) !important;
+        }
+      `;
+      
+      function apply(doc) {
+        if (!doc) return;
+        const style = doc.createElement('style');
+        style.id = 'vaultscapes-dark-mode-email';
+        if (!doc.getElementById('vaultscapes-dark-mode-email')) {
+          style.innerHTML = darkCSS;
+          doc.head.appendChild(style);
+        }
+        
+        /* Post-injection cleaning for elements with legacy MSO styles */
+        doc.querySelectorAll('[style*="mso-color-alt"]').forEach(el => {
+            el.style.setProperty('mso-color-alt', 'initial', 'important');
+        });
+      }
+      
+      /* Apply to main page */
+      apply(document);
+
+      /* Apply to all iframes (Newsletter container) */
+      document.querySelectorAll('iframe').forEach(iframe => {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          apply(doc);
+        } catch(e) {
+          console.warn("VaultScapes Dark: Could not access iframe content due to cross-origin restrictions.");
+        }
+      });
+      
+      return 'dark mode email applied';
+    })();
+  ''';
   @override
   void initState() {
     super.initState();
-    _initWebView();
+    // Only initialize WebView for authenticated users to prevent background fetching
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isAuthenticated) {
+      _initWebView();
+    }
   }
 
   @override
@@ -307,19 +449,33 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             setState(() {
               _hasError = false;
               _isContentReady = false;
+              _mainFrameErrorCount = 0; // Reset error count
             });
           },
           onPageFinished: (String url) async {
             debugPrint('WebView onPageFinished: $url');
 
+            // Get theme before async operations
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
             // Apply JavaScript to hide elements based on URL
             if (_isAlphaSignalEmailPage(url)) {
               debugPrint('WebView: Running hide elements JS');
               await _controller.runJavaScript(_hideEmailElementsJs);
+              
+              // Inject user's name and remove logo
+              await _injectUserNameAndRemoveLogo();
+              
+              // Apply dark mode if device theme is dark
+              if (isDarkMode) {
+                debugPrint('WebView: Applying dark mode for email content');
+                await _controller.runJavaScript(_darkModeEmailJs);
+              }
             }
 
-            // Small delay to ensure JS execution completes
-            await Future.delayed(const Duration(milliseconds: 500));
+            // Add extra delay to ensure all injections are fully applied
+            // This prevents users from seeing unprepared content when switching pages quickly
+            await Future.delayed(const Duration(milliseconds: 1500));
 
             if (!mounted) return;
             debugPrint('WebView: Setting _isContentReady = true');
@@ -335,16 +491,113 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             });
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView onWebResourceError: ${error.description}');
-            if (!mounted) return;
-            setState(() {
-              _hasError = true;
-              _isContentReady = true;
-            });
+            debugPrint('WebView onWebResourceError: ${error.description}, isForMainFrame: ${error.isForMainFrame}');
+            
+            // Only show error for main frame failures, ignore subresource errors
+            if (error.isForMainFrame == true) {
+              _mainFrameErrorCount++;
+              
+              // Only mark as error if we have persistent main frame failures
+              if (_mainFrameErrorCount > 1 && mounted) {
+                setState(() {
+                  _hasError = true;
+                  _isContentReady = true;
+                });
+              }
+            }
+            // Ignore subresource errors (images, scripts, etc.) - they don't affect page usability
           },
         ),
       )
       ..loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+  }
+
+  /// Inject logged-in user's name and remove AlphaSignal logo
+  Future<void> _injectUserNameAndRemoveLogo() async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final userName = authProvider.user?.displayName ?? 'Reader';
+      final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+      
+      final injectionJs = '''
+        (function() {
+          // Remove AlphaSignal logo
+          var logos = document.querySelectorAll('img[alt="AlphaSignal Logo"]');
+          logos.forEach(function(logo) {
+            logo.style.display = 'none';
+            // Also hide the divider after logo if exists
+            var nextEl = logo.nextElementSibling;
+            if (nextEl && nextEl.tagName === 'TABLE') {
+              nextEl.style.display = 'none';
+            }
+          });
+          
+          // Try to access iframe and inject user name
+          var iframes = document.querySelectorAll('iframe');
+          iframes.forEach(function(iframe) {
+            try {
+              var iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+              if (iframeDoc) {
+                // Remove logo in iframe
+                var iframeLogos = iframeDoc.querySelectorAll('img[alt="AlphaSignal Logo"]');
+                iframeLogos.forEach(function(logo) {
+                  logo.style.display = 'none';
+                  var nextEl = logo.nextElementSibling;
+                  if (nextEl && nextEl.tagName === 'TABLE') {
+                    nextEl.style.display = 'none';
+                  }
+                });
+                
+                // Inject user's name
+                var greetings = iframeDoc.querySelectorAll('p');
+                greetings.forEach(function(p) {
+                  var text = p.textContent || '';
+                  if (text.indexOf('{{FIRSTNAME}}') !== -1 || text.indexOf('Hey {{FIRSTNAME}}') !== -1) {
+                    p.innerHTML = p.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
+                  }
+                });
+              }
+            } catch (e) {
+              console.log('VaultScapes: Cannot access iframe:', e);
+            }
+          });
+          
+          // Also try direct replacement in main document
+          var mainGreetings = document.querySelectorAll('p');
+          mainGreetings.forEach(function(p) {
+            var text = p.textContent || '';
+            if (text.indexOf('{{FIRSTNAME}}') !== -1) {
+              p.innerHTML = p.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
+            }
+          });
+          
+          return 'injection complete';
+        })();
+      ''';
+      
+      await _controller.runJavaScript(injectionJs);
+      
+      // Retry after delays to catch dynamically loaded content
+      // Also reapply dark mode if needed
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        if (mounted) {
+          await _controller.runJavaScript(injectionJs);
+          if (isDarkMode) {
+            await _controller.runJavaScript(_darkModeEmailJs);
+          }
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 1500), () async {
+        if (mounted) {
+          await _controller.runJavaScript(injectionJs);
+          if (isDarkMode) {
+            await _controller.runJavaScript(_darkModeEmailJs);
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error injecting user name: $e');
+    }
   }
 
   /// Check if URL is an AlphaSignal email page
@@ -770,6 +1023,44 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
     })();
   ''';
 
+  // JavaScript to inject light mode CSS when app is in light theme
+  static const String _lightModeArchiveJs = '''
+    (function() {
+      const style = document.createElement('style');
+      style.id = 'vaultscapes-light-mode';
+      style.innerHTML = `
+        body, .archive-page, #__next > div > div {
+          background-color: #ffffff !important;
+          color: #000000 !important;
+        }
+        header, footer {
+          background-color: #ffffff !important;
+          border-color: #e5e7eb !important;
+        }
+        h2, h3, h4, h5, p, span, a {
+          color: #111827 !important;
+        }
+        svg path {
+          fill: #000000 !important;
+        }
+        div[class*="hover:bg-gray-50/5"]:hover {
+          background-color: rgba(0,0,0,0.05) !important;
+        }
+        .text-gray-500 {
+          color: #6b7280 !important;
+        }
+        button {
+          color: #000000 !important;
+          border-color: #000000 !important;
+        }
+      `;
+      if (!document.getElementById('vaultscapes-light-mode')) {
+        document.head.appendChild(style);
+      }
+      return 'light mode applied';
+    })();
+  ''';
+
   // JavaScript to intercept link clicks - prevents default and sends to Flutter
   static const String _linkInterceptorJs = '''
     (function() {
@@ -891,7 +1182,16 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             }
           },
           onPageFinished: (String url) async {
-            await _archiveController.runJavaScript(_hideArchiveElementsJs);
+            // Get theme before async operations to avoid context warning
+            final isLightMode = Theme.of(context).brightness == Brightness.light;
+            
+            await _archiveController.runJavaScript(_ArchiveDialogState._hideArchiveElementsJs);
+            
+            // Apply light mode if app is in light theme
+            if (isLightMode) {
+              await _archiveController.runJavaScript(_ArchiveDialogState._lightModeArchiveJs);
+            }
+            
             await _archiveController.runJavaScript(_linkInterceptorJs);
             await Future.delayed(const Duration(milliseconds: 300));
 
@@ -902,13 +1202,16 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             }
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('Archive WebView error: ${error.description}');
-            if (mounted) {
+            debugPrint('Archive WebView error: ${error.description}, isForMainFrame: ${error.isForMainFrame}');
+            
+            // Only show error for main frame failures
+            if (error.isForMainFrame == true && mounted) {
               setState(() {
                 _hasNetworkError = true;
                 _isLoading = false;
               });
             }
+            // Ignore subresource errors
           },
           onNavigationRequest: (NavigationRequest request) {
             if (_isHandlingEmailSelection) return NavigationDecision.prevent;
