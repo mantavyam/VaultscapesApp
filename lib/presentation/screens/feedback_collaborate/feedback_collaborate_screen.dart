@@ -230,10 +230,6 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                   subtitle: 'Report · Suggest · Improve',
                   badgeText: 'Help Us Serve You Better',
                   onTap: () => setState(() => _selectedSection = 'feedback'),
-                  gradientColors: [
-                    const Color(0xFF0EA5E9),
-                    const Color(0xFF06B6D4),
-                  ],
                 ),
               ),
 
@@ -249,10 +245,6 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                   subtitle: 'Submit · Share · Contribute',
                   badgeText: 'Join the Community',
                   onTap: () => setState(() => _selectedSection = 'collaborate'),
-                  gradientColors: [
-                    const Color(0xFF0EA5E9),
-                    const Color(0xFF06B6D4),
-                  ],
                 ),
               ),
             ],
@@ -270,7 +262,6 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     required String subtitle,
     required String badgeText,
     required VoidCallback onTap,
-    required List<Color> gradientColors,
   }) {
     final isDark = theme.brightness == Brightness.dark;
 
@@ -295,41 +286,21 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
             duration: const Duration(milliseconds: 200),
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? gradientColors
-                          .map((c) => c.withValues(alpha: 0.15))
-                          .toList()
-                    : gradientColors
-                          .map((c) => c.withValues(alpha: 0.08))
-                          .toList(),
-              ),
+              color: theme.colorScheme.card,
               borderRadius: BorderRadius.circular(FormSpacing.lg),
               border: Border.all(
-                color: isDark
-                    ? gradientColors[0].withValues(alpha: 0.3)
-                    : gradientColors[0].withValues(alpha: 0.2),
-                width: 1.5,
+                color: theme.colorScheme.border,
+                width: 1,
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top-left icon with background
-                Container(
-                  width: iconSize * 1.6,
-                  height: iconSize * 1.6,
-                  decoration: BoxDecoration(
-                    color: gradientColors[0].withValues(
-                      alpha: isDark ? 0.2 : 0.15,
-                    ),
-                    borderRadius: BorderRadius.circular(
-                      FormDimensions.borderRadius,
-                    ),
-                  ),
-                  child: Icon(icon, size: iconSize, color: gradientColors[0]),
+                // Top-left icon
+                Icon(
+                  icon,
+                  size: iconSize,
+                  color: theme.colorScheme.foreground,
                 ),
 
                 const Spacer(flex: 2),
@@ -371,9 +342,9 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                           vertical: padding * 0.35,
                         ),
                         decoration: BoxDecoration(
-                          color: gradientColors[0].withValues(
-                            alpha: isDark ? 0.2 : 0.12,
-                          ),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.black.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Text(
@@ -381,7 +352,7 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                           style: TextStyle(
                             fontSize: badgeFontSize,
                             fontWeight: FontWeight.w600,
-                            color: gradientColors[0],
+                            color: theme.colorScheme.foreground,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -395,15 +366,11 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                       width: buttonSize,
                       height: buttonSize,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: gradientColors,
-                        ),
+                        color: isDark ? Colors.white : Colors.black,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: gradientColors[0].withValues(alpha: 0.3),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -414,7 +381,7 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                         child: Icon(
                           Icons.arrow_forward_rounded,
                           size: buttonIconSize,
-                          color: Colors.white,
+                          color: isDark ? Colors.black : Colors.white,
                         ),
                       ),
                     ),

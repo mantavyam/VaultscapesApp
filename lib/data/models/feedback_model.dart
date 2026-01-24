@@ -12,6 +12,7 @@ class FeedbackModel {
   final String? pageUrl;
   final List<String> attachmentPaths; // Local paths before upload
   final List<String> attachmentUrls; // Firebase Storage URLs after upload
+  final List<String> attachmentNames; // Original filenames
   final int? usabilityRating;
   final DateTime submittedAt;
   final String status; // 'pending', 'reviewed', 'resolved'
@@ -29,6 +30,7 @@ class FeedbackModel {
     this.pageUrl,
     this.attachmentPaths = const [],
     this.attachmentUrls = const [],
+    this.attachmentNames = const [],
     this.usabilityRating,
     DateTime? submittedAt,
     this.status = 'pending',
@@ -47,6 +49,7 @@ class FeedbackModel {
       'description': description,
       'pageUrl': pageUrl,
       'attachmentUrls': attachmentUrls,
+      'attachmentNames': attachmentNames,
       'usabilityRating': usabilityRating,
       'submittedAt': submittedAt.toIso8601String(),
       'status': status,
@@ -67,6 +70,7 @@ class FeedbackModel {
       'pageUrl': pageUrl,
       'attachmentPaths': attachmentPaths,
       'attachmentUrls': attachmentUrls,
+      'attachmentNames': attachmentNames,
       'usabilityRating': usabilityRating,
       'submittedAt': submittedAt.toIso8601String(),
       'status': status,
@@ -89,14 +93,15 @@ class FeedbackModel {
       pageUrl: json['pageUrl'] as String?,
       attachmentPaths: (json['attachmentPaths'] as List<dynamic>?)?.cast<String>() ?? [],
       attachmentUrls: (json['attachmentUrls'] as List<dynamic>?)?.cast<String>() ?? [],
+      attachmentNames: (json['attachmentNames'] as List<dynamic>?)?.cast<String>() ?? [],
       usabilityRating: json['usabilityRating'] as int?,
       submittedAt: DateTime.parse(json['submittedAt'] as String),
       status: json['status'] as String? ?? 'pending',
     );
   }
 
-  /// Create a copy with updated attachment URLs (after upload)
-  FeedbackModel copyWithUrls(List<String> urls) {
+  /// Create a copy with updated attachment URLs and names (after upload)
+  FeedbackModel copyWithUrls(List<String> urls, List<String> names) {
     return FeedbackModel(
       id: id,
       userId: userId,
@@ -110,6 +115,7 @@ class FeedbackModel {
       pageUrl: pageUrl,
       attachmentPaths: attachmentPaths,
       attachmentUrls: urls,
+      attachmentNames: names,
       usabilityRating: usabilityRating,
       submittedAt: submittedAt,
       status: status,
@@ -131,6 +137,7 @@ class FeedbackModel {
       pageUrl: pageUrl,
       attachmentPaths: attachmentPaths,
       attachmentUrls: attachmentUrls,
+      attachmentNames: attachmentNames,
       usabilityRating: usabilityRating,
       submittedAt: submittedAt,
       status: status,

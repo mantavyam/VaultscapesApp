@@ -1369,8 +1369,8 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
   }
 
   void _submitCollaboration() async {
-    // Unfocus any text field immediately to dismiss keyboard
-    FocusScope.of(context).unfocus();
+    // === STRONGER UNFOCUS RIGHT AT THE START ===
+    FocusManager.instance.primaryFocus?.unfocus();
     
     setState(() {
       _errors.clear();
@@ -1419,9 +1419,24 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
       return;
     }
 
+    // Rate limit check
+    final provider = context.read<FeedbackProvider>();
+    final canSubmit = await provider.canSubmitCollaboration();
+    
+    if (!canSubmit) {
+      final count = await provider.getTodayCollaborationCount();
+      _showValidationError("Daily limit reached: You can submit up to 5 collaborations per day. You've submitted $count today.");
+      return;
+    }
+
+    // === STRONGER UNFOCUS + LONGER DELAY BEFORE DIALOG ===
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 400)); // Increased delay
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Submit Contribution?'),
         content: const Text(
@@ -1442,11 +1457,9 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
 
     if (confirmed != true) return;
 
-    // Unfocus any text field to dismiss keyboard before showing loading overlay
-    FocusScope.of(context).unfocus();
-    
-    // Add a small delay to ensure keyboard is dismissed before proceeding
-    await Future.delayed(const Duration(milliseconds: 100));
+    // === FINAL UNFOCUS + LONGER DELAY BEFORE SUBMISSION ===
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 400)); // Increased delay
 
     final collaboration = CollaborationModel(
       submissionTypes: _selectedSubmissionTypes.toList(),
@@ -1465,7 +1478,6 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
           : null,
     );
 
-    final provider = context.read<FeedbackProvider>();
     await provider.submitCollaboration(collaboration);
 
     if (mounted) {

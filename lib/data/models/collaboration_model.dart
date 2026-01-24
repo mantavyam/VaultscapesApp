@@ -8,6 +8,7 @@ class CollaborationModel {
   final String subjectDetails;
   final List<String> filePaths; // Local paths before upload
   final List<String> fileUrls; // Firebase Storage URLs after upload
+  final List<String> fileNames; // Original filenames
   final String? urlSubmission;
   final String description;
   final bool wantsCredit;
@@ -25,6 +26,7 @@ class CollaborationModel {
     required this.subjectDetails,
     this.filePaths = const [],
     this.fileUrls = const [],
+    this.fileNames = const [],
     this.urlSubmission,
     required this.description,
     this.wantsCredit = false,
@@ -43,6 +45,7 @@ class CollaborationModel {
       'semesterSelection': semesterSelection,
       'subjectDetails': subjectDetails,
       'fileUrls': fileUrls,
+      'fileNames': fileNames,
       'urlSubmission': urlSubmission,
       'description': description,
       'wantsCredit': wantsCredit,
@@ -63,6 +66,7 @@ class CollaborationModel {
       'subjectDetails': subjectDetails,
       'filePaths': filePaths,
       'fileUrls': fileUrls,
+      'fileNames': fileNames,
       'urlSubmission': urlSubmission,
       'description': description,
       'wantsCredit': wantsCredit,
@@ -85,6 +89,7 @@ class CollaborationModel {
       subjectDetails: json['subjectDetails'] as String,
       filePaths: (json['filePaths'] as List<dynamic>?)?.cast<String>() ?? [],
       fileUrls: (json['fileUrls'] as List<dynamic>?)?.cast<String>() ?? [],
+      fileNames: (json['fileNames'] as List<dynamic>?)?.cast<String>() ?? [],
       urlSubmission: json['urlSubmission'] as String?,
       description: json['description'] as String,
       wantsCredit: json['wantsCredit'] as bool? ?? false,
@@ -95,8 +100,8 @@ class CollaborationModel {
     );
   }
 
-  /// Create a copy with updated file URLs (after upload)
-  CollaborationModel copyWithUrls(List<String> urls) {
+  /// Create a copy with updated file URLs and names (after upload)
+  CollaborationModel copyWithUrls(List<String> urls, List<String> names) {
     return CollaborationModel(
       id: id,
       userId: userId,
@@ -106,6 +111,7 @@ class CollaborationModel {
       subjectDetails: subjectDetails,
       filePaths: filePaths,
       fileUrls: urls,
+      fileNames: names,
       urlSubmission: urlSubmission,
       description: description,
       wantsCredit: wantsCredit,
@@ -127,6 +133,7 @@ class CollaborationModel {
       subjectDetails: subjectDetails,
       filePaths: filePaths,
       fileUrls: fileUrls,
+      fileNames: fileNames,
       urlSubmission: urlSubmission,
       description: description,
       wantsCredit: wantsCredit,

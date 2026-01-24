@@ -364,8 +364,9 @@ class _FeedbackHistoryContent extends StatelessWidget {
                       Text(
                         'Submission Details',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Urbanist',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                           color: theme.colorScheme.foreground,
                         ),
                       ),
@@ -422,6 +423,13 @@ class _FeedbackHistoryContent extends StatelessWidget {
                             'Usability Rating',
                             Text('${data['usabilityRating']}/5 stars')),
                       ],
+                      if (data['attachmentNames'] != null && (data['attachmentNames'] as List).isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildDetailRow(
+                            theme,
+                            'Attachments',
+                            _buildFilesList(theme, data['attachmentNames'] as List)),
+                      ],
                       const SizedBox(height: 16),
                       _buildDetailRow(
                           theme,
@@ -445,6 +453,7 @@ class _FeedbackHistoryContent extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
+            fontFamily: 'Urbanist',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: theme.colorScheme.mutedForeground,
@@ -453,12 +462,45 @@ class _FeedbackHistoryContent extends StatelessWidget {
         const SizedBox(height: 4),
         DefaultTextStyle(
           style: TextStyle(
+            fontFamily: 'Urbanist',
             fontSize: 14,
             color: theme.colorScheme.foreground,
           ),
           child: value,
         ),
       ],
+    );
+  }
+
+  Widget _buildFilesList(ThemeData theme, List attachments) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: attachments.map((fileName) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              Icon(
+                Icons.attach_file,
+                size: 14,
+                color: theme.colorScheme.mutedForeground,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  fileName.toString(),
+                  style: TextStyle(
+                    fontFamily: 'Urbanist',
+                    fontSize: 13,
+                    color: theme.colorScheme.foreground,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 

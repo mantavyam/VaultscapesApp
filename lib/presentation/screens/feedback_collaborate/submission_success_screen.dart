@@ -1,4 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../providers/feedback_provider.dart';
 import 'feedback_collaborate_screen.dart';
 
 /// Type of submission for the success screen
@@ -25,6 +27,8 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  int _submissionCount = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -45,6 +49,21 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
+    _loadSubmissionCount();
+  }
+
+  Future<void> _loadSubmissionCount() async {
+    final provider = context.read<FeedbackProvider>();
+    final count = widget.type == SubmissionSuccessType.feedback
+        ? await provider.getTodayFeedbackCount()
+        : await provider.getTodayCollaborationCount();
+    
+    if (mounted) {
+      setState(() {
+        _submissionCount = count;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -80,9 +99,10 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
                   builder: (context, child) {
                     return Opacity(
                       opacity: _fadeAnimation.value,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                           // Success Icon with animation
                           Transform.scale(
                             scale: _scaleAnimation.value,
@@ -156,6 +176,79 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: FormSpacing.xxl),
+
+                          // Submission Count Badge
+                          if (!_isLoading)
+                            Container(
+                              padding: const EdgeInsets.all(FormSpacing.lg),
+                              decoration: BoxDecoration(
+                                color: _submissionCount >= 5
+                                    ? const Color(0xFFF59E0B).withValues(alpha: 0.1)
+                                    : accentColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(
+                                  FormDimensions.cardRadius,
+                                ),
+                                border: Border.all(
+                                  color: _submissionCount >= 5
+                                      ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                                      : accentColor.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: (_submissionCount >= 5
+                                              ? const Color(0xFFF59E0B)
+                                              : accentColor)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(
+                                        FormDimensions.borderRadius,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      _submissionCount >= 5
+                                          ? Icons.warning_amber_rounded
+                                          : Icons.check_circle_outline,
+                                      size: 20,
+                                      color: _submissionCount >= 5
+                                          ? const Color(0xFFF59E0B)
+                                          : accentColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: FormSpacing.md),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$_submissionCount / 5 submissions today',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: theme.colorScheme.foreground,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _submissionCount >= 5
+                                              ? 'Daily limit reached. Try again tomorrow!'
+                                              : 'You can submit up to 5 times per day',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: theme.colorScheme.mutedForeground,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          SizedBox(height: _isLoading ? FormSpacing.xxl : FormSpacing.lg),
 
                           // Info Card
                           Container(
@@ -266,6 +359,7 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
                             ),
                           ),
                         ],
+                      ),
                       ),
                     );
                   },

@@ -1294,8 +1294,8 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
   }
 
   void _submitFeedback() async {
-    // Unfocus any text field immediately to dismiss keyboard
-    FocusScope.of(context).unfocus();
+    // === STRONGER UNFOCUS RIGHT AT THE START ===
+    FocusManager.instance.primaryFocus?.unfocus();
     
     setState(() {
       _errors.clear();
@@ -1334,9 +1334,23 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
       return;
     }
 
+    // Rate limit check
+    final provider = context.read<FeedbackProvider>();
+    final canSubmit = await provider.canSubmitFeedback();
+    if (!canSubmit) {
+      final count = await provider.getTodayFeedbackCount();
+      _showValidationError("Daily limit reached: You can submit up to 5 feedbacks per day. You've submitted $count today.");
+      return;
+    }
+
+    // === STRONGER UNFOCUS + LONGER DELAY BEFORE DIALOG ===
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 400)); // Increased from 50ms
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Submit Feedback?'),
         content: const Text(
@@ -1357,11 +1371,9 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
 
     if (confirmed != true) return;
 
-    // Unfocus any text field to dismiss keyboard before showing loading overlay
-    FocusScope.of(context).unfocus();
-    
-    // Add a small delay to ensure keyboard is dismissed before proceeding
-    await Future.delayed(const Duration(milliseconds: 100));
+    // === FINAL UNFOCUS + LONGER DELAY BEFORE SUBMISSION ===
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future.delayed(const Duration(milliseconds: 400)); // Increased from 100ms
 
     final feedback = FeedbackModel(
       name: _nameController.text,
@@ -1376,12 +1388,10 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
       usabilityRating: _usabilityRating > 0 ? _usabilityRating : null,
     );
 
-    final provider = context.read<FeedbackProvider>();
     await provider.submitFeedback(feedback);
 
     if (mounted) {
       _resetForm();
-      // Navigate to success screen via callback
       widget.onSubmissionSuccess?.call();
     }
   }

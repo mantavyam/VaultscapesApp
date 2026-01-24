@@ -1,0 +1,141 @@
+{
+  "semesters": [
+    {
+      "id": "semester-1",
+      "name": "Semester 1",
+      "description": "Y1S1 of UG BTECH CSE & IT",
+      "order": 1,
+      "overview": {
+        "name": "Overview - Semester 1",
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/overview"
+      },
+      "subjects": [
+        { "id": "mat101-mathematics", "name": "Mathematics", "code": "MAT101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/mat101-mathematics" },
+        { "id": "che101-chemistry", "name": "Chemistry", "code": "CHE101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/che101-chemistry" },
+        { "id": "che121-chemistry-lab", "name": "Chemistry Lab", "code": "CHE121", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/che101-chemistry/che121-chemistry-lab" },
+        { "id": "cse104-programming", "name": "Programming", "code": "CSE104", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/cse104-programming" },
+        { "id": "cse124-programming-lab", "name": "Programming Lab", "code": "CSE124", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/cse104-programming/cse124-programming-lab" },
+        { "id": "civ101-civil-engineering", "name": "Civil Engineering", "code": "CIV101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/civ101-civil-engineering" },
+        { "id": "evs142-environmental-science", "name": "Environmental Science", "code": "EVS142", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/evs142-environmental-science" },
+        { "id": "bcu141-communication", "name": "Communication", "code": "BCU141", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/bcu141-communication" },
+        { "id": "bsu143-behaviour", "name": "Behaviour", "code": "BSU143", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/bsu143-behaviour" },
+        { "id": "flu144-french", "name": "French", "code": "FLU144", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/flu144-french" },
+        { "id": "bme124-workshop", "name": "Workshop", "code": "BME124", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/bme124-workshop" },
+        { "id": "csc101-cyber-security", "name": "Cyber Security (Spec)", "code": "CSC101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/specialisation/csc101-cyber-security" },
+        { "id": "csa101-ai-and-ml", "name": "AI and ML (Spec)", "code": "CSA101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/specialisation/csa101-ai-and-ml" },
+        { "id": "csd101-data-science", "name": "Data Science (Spec)", "code": "CSD101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/specialisation/csd101-data-science" },
+        { "id": "csi101-iot", "name": "IOT (Spec)", "code": "CSI101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-1/specialisation/csi101-iot" }
+      ]
+    },
+    {
+      "id": "semester-2",
+      "name": "Semester 2",
+      "description": "Y1S2 of UG BTECH CSE & IT",
+      "order": 2,
+      "overview": {
+        "name": "Overview - Semester 2",
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/overview"
+      },
+      "subjects": [
+        { "id": "mat201-mathematics", "name": "Mathematics", "code": "MAT201", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/mat201-mathematics" },
+        { "id": "phy101-physics", "name": "Physics", "code": "PHY101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/phy101-physics" },
+        { "id": "phy121-physics-lab", "name": "Physics Lab", "code": "PHY121", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/phy101-physics/phy121-physics-lab" },
+        { "id": "cse204-cpp", "name": "C++", "code": "CSE204", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/cse204-c++" },
+        { "id": "cse224-cpp-lab", "name": "C++ Lab", "code": "CSE224", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/cse204-c++/cse224-c++-lab" },
+        { "id": "ece101-electrical-engineering", "name": "Electrical Engineering", "code": "ECE101", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/ece101-electrical-engineering" },
+        { "id": "ece121-electrical-lab", "name": "Electrical Lab", "code": "ECE121", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/ece101-electrical-engineering/ece121-electrical-engineering-lab" },
+        { "id": "evs242-environmental-science", "name": "Environmental Science", "code": "EVS242", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/evs242-environmental-science" },
+        { "id": "bcu241-communication", "name": "Communication", "code": "BCU241", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/bcu241-communication" },
+        { "id": "bsu243-behavioural-science", "name": "Behavioural Science", "code": "BSU243", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/bsu243-behavioural-science" },
+        { "id": "flu244-french", "name": "French", "code": "FLU244", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/flu244-french" },
+        { "id": "bme223-engineering-graphics", "name": "Engineering Graphics", "code": "BME223", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/bme223-engineering-graphics" },
+        { "id": "csc201-cyber-security", "name": "Cyber Security (Spec)", "code": "CSC201", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/specialisation/csc201-cyber-security" },
+        { "id": "csa201-ai-and-ml", "name": "AI and ML (Spec)", "code": "CSA201", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/specialisation/csa201-ai-and-ml" },
+        { "id": "csd201-data-science", "name": "Data Science (Spec)", "code": "CSD201", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/specialisation/csd201-data-science" },
+        { "id": "csi201-iot", "name": "IOT (Spec)", "code": "CSI201", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-2/specialisation/csi201-iot" }
+      ]
+    },
+    {
+      "id": "semester-3",
+      "name": "Semester 3",
+      "description": "Y2S3 of UG BTECH CSE & IT",
+      "order": 3,
+      "overview": {
+        "name": "Overview - Semester 3",
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/overview"
+      },
+      "subjects": [
+        { "id": "mat301-mathematics", "name": "Mathematics", "code": "MAT301", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/mat301-mathematics" },
+        { "id": "cse302-python", "name": "Python", "code": "CSE302", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse302-python" },
+        { "id": "cse322-python-lab", "name": "Python Lab", "code": "CSE322", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse302-python/cse322-python-lab" },
+        { "id": "cse202-ds-cpp", "name": "DS C++", "code": "CSE202", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse202-ds-c++" },
+        { "id": "cse222-ds-cpp-lab", "name": "DS C++ Lab", "code": "CSE222", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse202-ds-c++/cse222-ds-c++-lab" },
+        { "id": "cse304-dbms", "name": "DBMS", "code": "CSE304", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse304-dbms" },
+        { "id": "cse324-dbms-lab", "name": "DBMS Lab", "code": "CSE324", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/cse304-dbms/cse324-dbms-lab" },
+        { "id": "ece306-digital-electronics", "name": "Digital Electronics", "code": "ECE306", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/ece306-digital-electronics" },
+        { "id": "ece326-digital-electronics-lab", "name": "Digital Electronics Lab", "code": "ECE326", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/ece306-digital-electronics/ece326-digital-electronics-lab" },
+        { "id": "bsu343-behavioural-science", "name": "Behavioural Science", "code": "BSU343", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/bsu343-behavioural-science" },
+        { "id": "bcu341-communication", "name": "Communication", "code": "BCU341", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/bcu341-communication" },
+        { "id": "flu344-french", "name": "French", "code": "FLU344", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/flu344-french" },
+        { "id": "ntp330-term-paper", "name": "Term Paper", "code": "NTP330", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/ntp330-term-paper" },
+        { "id": "csc301-cyber-security", "name": "Cyber Security (Spec)", "code": "CSC301", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/specialisation/csc301-cyber-security" },
+        { "id": "csa301-ai-and-ml", "name": "AI and ML (Spec)", "code": "CSA301", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/specialisation/csa301-ai-and-ml" },
+        { "id": "csd301-data-science", "name": "Data Science (Spec)", "code": "CSD301", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/specialisation/csd301-data-science" },
+        { "id": "csi301-iot", "name": "IOT (Spec)", "code": "CSI301", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-3/specialisation/csi301-iot" }
+      ]
+    },
+    {
+      "id": "semester-4",
+      "name": "Semester 4",
+      "description": "Y2S4 of UG BTECH CSE & IT",
+      "order": 4,
+      "overview": {
+        "name": "Overview - Semester 4",
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/overview/readme"
+      },
+      "subjects": [
+        { "id": "cse401-discrete-maths", "name": "Discrete Maths", "code": "CSE401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/cse401-discrete-maths" },
+        { "id": "cse402-coa", "name": "COA", "code": "CSE402", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/cse402-coa" },
+        { "id": "cse404-os", "name": "OS", "code": "CSE404", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/cse404-os" },
+        { "id": "cse424-os-lab", "name": "OS Lab", "code": "CSE424", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/cse404-os/cse424-os-lab" },
+        { "id": "bcu441-communication", "name": "Communication", "code": "BCU441", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/bcu441-communication" },
+        { "id": "bsu443-behaviour", "name": "Behaviour", "code": "BSU443", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/bsu443-behaviour" },
+        { "id": "flu444-french", "name": "French", "code": "FLU444", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/flu444-french" },
+        { "id": "csc401-cyber-security", "name": "Cyber Security (Spec)", "code": "CSC401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/specialisation/csc401-cyber-security" },
+        { "id": "csa401-ai-and-ml", "name": "AI and ML (Spec)", "code": "CSA401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/specialisation/csa401-ai-and-ml" },
+        { "id": "csd401-data-science", "name": "Data Science (Spec)", "code": "CSD401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/specialisation/csd401-data-science" },
+        { "id": "csi401-iot", "name": "IOT (Spec)", "code": "CSI401", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-4/specialisation/csi401-iot" }
+      ]
+    },
+    {
+      "id": "semester-5",
+      "name": "Semester 5",
+      "description": "Y3S5 of UG BTECH CSE & IT",
+      "order": 5,
+      "overview": {
+        "name": "Overview - Semester 5",
+        "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/overview/readme"
+      },
+      "subjects": [
+        { "id": "cse303-daa", "name": "DAA", "code": "CSE303", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse303-daa" },
+        { "id": "cse323-daa-lab", "name": "DAA Lab", "code": "CSE323", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse303-daa/cse323-daa-lab" },
+        { "id": "cse501-toc", "name": "TOC", "code": "CSE501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse501-toc" },
+        { "id": "cse503-android", "name": "Android", "code": "CSE503", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse503-android" },
+        { "id": "cse523-android-lab", "name": "Android Lab", "code": "CSE523", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse503-android/cse523-android-lab" },
+        { "id": "cse504-advanced-java", "name": "Advanced Java", "code": "CSE504", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse504-advanced-java" },
+        { "id": "cse524-advanced-java-lab", "name": "Advanced Java Lab", "code": "CSE524", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse504-advanced-java/cse524-advanced-java-lab" },
+        { "id": "cse505-iwt", "name": "IWT", "code": "CSE505", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse505-iwt" },
+        { "id": "cse525-iwt-lab", "name": "IWT Lab", "code": "CSE525", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/cse505-iwt/cse525-iwt-lab" },
+        { "id": "it501-blockchain", "name": "Blockchain", "code": "IT501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/it501-blockchain" },
+        { "id": "bcu541-communication", "name": "Communication", "code": "BCU541", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/bcu541-communication" },
+        { "id": "bsu543-behaviour", "name": "Behaviour", "code": "BSU543", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/bsu543-behaviour" },
+        { "id": "npt550-ipt-1", "name": "IPT-1", "code": "NPT550", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/npt550-ipt-1" },
+        { "id": "TST000-TSTPG", "name": "TEST-PAGE", "code": "TESTPG", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/testpage-gitbook-to-shadcn_flutter" },
+        { "id": "csc501-cyber-security", "name": "Cyber Security (Spec)", "code": "CSC501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/specialisation/csc501-cyber-security" },
+        { "id": "csa501-ai-and-ml", "name": "AI and ML (Spec)", "code": "CSA501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/specialisation/csa501-ai-and-ml" },
+        { "id": "csd501-data-science", "name": "Data Science (Spec)", "code": "CSD501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/specialisation/csd501-data-science" },
+        { "id": "csi501-iot", "name": "IOT (Spec)", "code": "CSI501", "gitbookUrl": "https://mantavyam.gitbook.io/vaultscapes/sem-5/specialisation/csi501-iot" }
+      ]
+    }
+  ]
+}

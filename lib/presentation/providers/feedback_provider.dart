@@ -119,4 +119,24 @@ class FeedbackProvider extends ChangeNotifier {
     _successMessage = null;
     notifyListeners();
   }
+
+  /// Check if user can submit feedback (rate limiting)
+  Future<bool> canSubmitFeedback() async {
+    return await _feedbackRepository.canSubmitFeedback();
+  }
+
+  /// Get today's feedback count
+  Future<int> getTodayFeedbackCount() async {
+    return await _feedbackRepository.getTodayFeedbackCount();
+  }
+
+  /// Check if user can submit collaboration (rate limiting)
+  Future<bool> canSubmitCollaboration() async {
+    return await _feedbackRepository.canSubmitCollaboration();
+  }
+
+  /// Get today's collaboration count
+  Future<int> getTodayCollaborationCount() async {
+    return await _feedbackRepository.getTodayCollaborationCount();
+  }
 }
