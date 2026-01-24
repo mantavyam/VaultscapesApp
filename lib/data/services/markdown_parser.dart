@@ -1,5 +1,19 @@
+import 'dart:developer' as developer;
+
 /// Markdown parser that handles Gitbook-specific syntax and converts to ContentBlocks
 class MarkdownParser {
+  static const String _logName = 'MarkdownParser';
+
+  void _log(String message, {Object? error, StackTrace? stackTrace}) {
+    developer.log(
+      message,
+      name: _logName,
+      error: error,
+      stackTrace: stackTrace,
+      time: DateTime.now(),
+    );
+  }
+
   /// Decode HTML entities in a string
   String _decodeHtmlEntities(String text) {
     return text
@@ -20,194 +34,311 @@ class MarkdownParser {
 
   /// Parse markdown content into a list of ContentBlocks
   List<ContentBlock> parse(String markdown) {
+    _log('=== PARSE START ===');
+    _log('Input markdown length: ${markdown.length} chars');
+
     // Pre-process: decode HTML entities in the raw markdown
     markdown = _decodeHtmlEntities(markdown);
+    _log('After HTML entity decode: ${markdown.length} chars');
+
     final blocks = <ContentBlock>[];
     final lines = markdown.split('\n');
+    _log('Total lines to parse: ${lines.length}');
+
     int i = 0;
+    int blockCount = 0;
 
-    while (i < lines.length) {
-      final line = lines[i];
-      final trimmedLine = line.trim();
+    int lastProcessedLine = -1; // For infinite loop detection
 
-      // Skip empty lines
-      if (trimmedLine.isEmpty) {
-        i++;
-        continue;
-      }
-
-      // Check for Gitbook-specific blocks first
-      if (trimmedLine.startsWith('{% hint')) {
-        final result = _parseHint(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% tabs %}')) {
-        final result = _parseTabs(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% stepper %}')) {
-        final result = _parseStepper(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% file')) {
-        final result = _parseFile(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% embed')) {
-        final result = _parseEmbed(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% code')) {
-        final result = _parseCodeBlock(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      if (trimmedLine.startsWith('{% content-ref')) {
-        final result = _parseContentRef(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Check for HTML expandable blocks
-      if (trimmedLine.startsWith('<details>')) {
-        final result = _parseExpandable(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Check for HTML figures/images
-      if (trimmedLine.contains('<figure>') || trimmedLine.contains('<img')) {
-        final result = _parseHtmlImage(lines, i);
-        if (result != null) {
-          blocks.add(result.block);
-          i = result.nextIndex;
-          continue;
-        }
-      }
-
-      // Check for HTML tables
-      if (trimmedLine.startsWith('<table')) {
-        final result = _parseHtmlTable(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Check for simple markdown tables (pipe syntax)
-      if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
-        final result = _parseMarkdownTable(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Check for HTML buttons
-      if (trimmedLine.contains('<a') && trimmedLine.contains('class="button')) {
-        final result = _parseButton(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Standard Markdown parsing
-
-      // Headings
-      if (trimmedLine.startsWith('#')) {
-        final headingMatch = RegExp(
-          r'^(#{1,6})\s+(.+)$',
-        ).firstMatch(trimmedLine);
-        if (headingMatch != null) {
-          final level = headingMatch.group(1)!.length;
-          final text = headingMatch.group(2)!;
-          blocks.add(HeadingBlock(level: level, text: text));
+    try {
+      while (i < lines.length) {
+        // Infinite loop detection
+        if (i == lastProcessedLine) {
+          _log('WARNING: Infinite loop detected at line $i, forcing skip');
+          _log('Line content: "${lines[i]}"');
           i++;
           continue;
         }
-      }
+        lastProcessedLine = i;
 
-      // Code blocks with triple backticks
-      if (trimmedLine.startsWith('```')) {
-        final result = _parseMarkdownCodeBlock(lines, i);
+        final line = lines[i];
+        final trimmedLine = line.trim();
+
+        // Skip empty lines
+        if (trimmedLine.isEmpty) {
+          i++;
+          continue;
+        }
+
+        // Skip orphan end tags (from malformed or partially parsed blocks)
+        if (trimmedLine == '{% endhint %}' ||
+            trimmedLine == '{% endtabs %}' ||
+            trimmedLine == '{% endtab %}' ||
+            trimmedLine == '{% endstepper %}' ||
+            trimmedLine == '{% endstep %}' ||
+            trimmedLine == '{% endcode %}' ||
+            trimmedLine == '{% endfile %}' ||
+            trimmedLine == '{% endembed %}' ||
+            trimmedLine == '{% endcontent-ref %}') {
+          _log('  -> Skipping orphan end tag at line $i: $trimmedLine');
+          i++;
+          continue;
+        }
+
+        _log(
+          'Parsing line $i: "${trimmedLine.substring(0, trimmedLine.length > 80 ? 80 : trimmedLine.length)}${trimmedLine.length > 80 ? "..." : ""}"',
+        );
+
+        // Check for Gitbook-specific blocks first
+        if (trimmedLine.startsWith('{% hint')) {
+          _log('  -> Detected HINT block at line $i');
+          final result = _parseHint(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> HINT block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% tabs %}')) {
+          _log('  -> Detected TABS block at line $i');
+          final result = _parseTabs(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> TABS block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% stepper %}')) {
+          _log('  -> Detected STEPPER block at line $i');
+          final result = _parseStepper(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> STEPPER block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% file')) {
+          _log('  -> Detected FILE block at line $i');
+          final result = _parseFile(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> FILE block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% embed')) {
+          _log('  -> Detected EMBED block at line $i');
+          final result = _parseEmbed(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> EMBED block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% code')) {
+          _log('  -> Detected CODE block at line $i');
+          final result = _parseCodeBlock(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> CODE block parsed, next line: $i');
+          continue;
+        }
+
+        if (trimmedLine.startsWith('{% content-ref')) {
+          _log('  -> Detected CONTENT-REF block at line $i');
+          final result = _parseContentRef(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> CONTENT-REF block parsed, next line: $i');
+          continue;
+        }
+
+        // Check for HTML expandable blocks
+        if (trimmedLine.startsWith('<details>')) {
+          _log('  -> Detected EXPANDABLE block at line $i');
+          final result = _parseExpandable(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> EXPANDABLE block parsed, next line: $i');
+          continue;
+        }
+
+        // Check for HTML figures/images
+        if (trimmedLine.contains('<figure>') || trimmedLine.contains('<img')) {
+          _log('  -> Detected HTML IMAGE at line $i');
+          final result = _parseHtmlImage(lines, i);
+          if (result != null) {
+            blocks.add(result.block);
+            i = result.nextIndex;
+            blockCount++;
+            _log('  -> HTML IMAGE parsed, next line: $i');
+            continue;
+          }
+          _log('  -> HTML IMAGE parse returned null');
+        }
+
+        // Check for HTML tables
+        if (trimmedLine.startsWith('<table')) {
+          _log('  -> Detected HTML TABLE at line $i');
+          final result = _parseHtmlTable(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> HTML TABLE parsed, next line: $i');
+          continue;
+        }
+
+        // Check for simple markdown tables (pipe syntax)
+        if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+          _log('  -> Detected MARKDOWN TABLE at line $i');
+          final result = _parseMarkdownTable(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> MARKDOWN TABLE parsed, next line: $i');
+          continue;
+        }
+
+        // Check for HTML buttons
+        if (trimmedLine.contains('<a') &&
+            trimmedLine.contains('class="button')) {
+          _log('  -> Detected BUTTON at line $i');
+          final result = _parseButton(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> BUTTON parsed, next line: $i');
+          continue;
+        }
+
+        // Standard Markdown parsing
+
+        // Headings
+        if (trimmedLine.startsWith('#')) {
+          final headingMatch = RegExp(
+            r'^(#{1,6})\s+(.+)$',
+          ).firstMatch(trimmedLine);
+          if (headingMatch != null) {
+            final level = headingMatch.group(1)!.length;
+            final text = headingMatch.group(2)!;
+            _log('  -> Detected HEADING level $level at line $i');
+            blocks.add(HeadingBlock(level: level, text: text));
+            i++;
+            blockCount++;
+            continue;
+          }
+        }
+
+        // Code blocks with triple backticks
+        if (trimmedLine.startsWith('```')) {
+          _log('  -> Detected MARKDOWN CODE block at line $i');
+          final result = _parseMarkdownCodeBlock(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> MARKDOWN CODE block parsed, next line: $i');
+          continue;
+        }
+
+        // Horizontal rule
+        if (trimmedLine == '---' ||
+            trimmedLine == '***' ||
+            trimmedLine == '___') {
+          _log('  -> Detected DIVIDER at line $i');
+          blocks.add(const DividerBlock());
+          i++;
+          blockCount++;
+          continue;
+        }
+
+        // Blockquote
+        if (trimmedLine.startsWith('>')) {
+          _log('  -> Detected BLOCKQUOTE at line $i');
+          final result = _parseBlockquote(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> BLOCKQUOTE parsed, next line: $i');
+          continue;
+        }
+
+        // Task list (check before unordered list)
+        if (trimmedLine.startsWith('* [') || trimmedLine.startsWith('- [')) {
+          _log('  -> Detected TASK LIST at line $i');
+          final result = _parseTaskList(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> TASK LIST parsed, next line: $i');
+          continue;
+        }
+
+        // Unordered list
+        if (trimmedLine.startsWith('* ') ||
+            trimmedLine.startsWith('- ') ||
+            trimmedLine.startsWith('+ ')) {
+          _log('  -> Detected UNORDERED LIST at line $i');
+          final result = _parseUnorderedList(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> UNORDERED LIST parsed, next line: $i');
+          continue;
+        }
+
+        // Ordered list
+        if (RegExp(r'^\d+\.\s+').hasMatch(trimmedLine)) {
+          _log('  -> Detected ORDERED LIST at line $i');
+          final result = _parseOrderedList(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> ORDERED LIST parsed, next line: $i');
+          continue;
+        }
+
+        // Math blocks
+        if (trimmedLine.startsWith(r'$$')) {
+          _log('  -> Detected MATH block at line $i');
+          final result = _parseMathBlock(lines, i);
+          blocks.add(result.block);
+          i = result.nextIndex;
+          blockCount++;
+          _log('  -> MATH block parsed, next line: $i');
+          continue;
+        }
+
+        // Default: paragraph
+        _log('  -> Parsing as PARAGRAPH at line $i');
+        final result = _parseParagraph(lines, i);
         blocks.add(result.block);
         i = result.nextIndex;
-        continue;
+        blockCount++;
+        _log('  -> PARAGRAPH parsed, next line: $i');
       }
-
-      // Horizontal rule
-      if (trimmedLine == '---' ||
-          trimmedLine == '***' ||
-          trimmedLine == '___') {
-        blocks.add(const DividerBlock());
-        i++;
-        continue;
-      }
-
-      // Blockquote
-      if (trimmedLine.startsWith('>')) {
-        final result = _parseBlockquote(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Task list (check before unordered list)
-      if (trimmedLine.startsWith('* [') || trimmedLine.startsWith('- [')) {
-        final result = _parseTaskList(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Unordered list
-      if (trimmedLine.startsWith('* ') ||
-          trimmedLine.startsWith('- ') ||
-          trimmedLine.startsWith('+ ')) {
-        final result = _parseUnorderedList(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Ordered list
-      if (RegExp(r'^\d+\.\s+').hasMatch(trimmedLine)) {
-        final result = _parseOrderedList(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Math blocks
-      if (trimmedLine.startsWith(r'$$')) {
-        final result = _parseMathBlock(lines, i);
-        blocks.add(result.block);
-        i = result.nextIndex;
-        continue;
-      }
-
-      // Default: paragraph
-      final result = _parseParagraph(lines, i);
-      blocks.add(result.block);
-      i = result.nextIndex;
+    } catch (e, stackTrace) {
+      _log(
+        'ERROR: Exception during parsing at line $i',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      _log('Line content: ${i < lines.length ? lines[i] : "OUT OF BOUNDS"}');
+      rethrow;
     }
+
+    _log('=== PARSE COMPLETE ===');
+    _log('Total blocks parsed: $blockCount');
+    _log(
+      'Block types: ${blocks.map((b) => b.runtimeType.toString()).join(", ")}',
+    );
 
     return blocks;
   }
@@ -384,15 +515,15 @@ class MarkdownParser {
       // First, decode the URL to handle %2F encoding
       final decodedUrl = Uri.decodeComponent(url);
       final uri = Uri.parse(decodedUrl);
-      
+
       // Try to extract filename from path (before query params)
       final path = uri.path;
       final pathSegments = path.split('/').where((s) => s.isNotEmpty).toList();
-      
+
       if (pathSegments.isNotEmpty) {
         // Get the last segment which should be the filename
         String lastSegment = pathSegments.last;
-        
+
         // If the URL contains 'uploads', the filename is typically after it
         final uploadsIndex = pathSegments.indexWhere(
           (s) => s.contains('uploads'),
@@ -402,21 +533,23 @@ class MarkdownParser {
           // Sometimes there's an ID between uploads and filename
           lastSegment = pathSegments.last;
         }
-        
+
         // Clean up the filename
         filename = lastSegment;
-        
+
         // Remove any query parameters that might be attached
         if (filename.contains('?')) {
           filename = filename.split('?').first;
         }
-        
+
         // Final decode in case there's remaining encoding
         filename = Uri.decodeComponent(filename);
       }
     } catch (_) {
       // If parsing fails, try a simple regex extraction
-      final filenameMatch = RegExp(r'([^/]+\.[a-zA-Z0-9]+)(?:\?|$)').firstMatch(url);
+      final filenameMatch = RegExp(
+        r'([^/]+\.[a-zA-Z0-9]+)(?:\?|$)',
+      ).firstMatch(url);
       if (filenameMatch != null) {
         filename = Uri.decodeComponent(filenameMatch.group(1) ?? 'Document');
       }
@@ -452,16 +585,16 @@ class MarkdownParser {
             block: EmbedBlock(url: url, caption: ''),
             nextIndex: start + 2,
           );
-        } else if (nextLine.isEmpty || 
-                   nextLine.startsWith('#') || 
-                   nextLine.startsWith('*') ||
-                   nextLine.startsWith('-') ||
-                   nextLine.startsWith('>') ||
-                   nextLine.startsWith('{%') ||
-                   nextLine.startsWith('<') ||
-                   nextLine.startsWith('```') ||
-                   nextLine.startsWith('1.') ||
-                   nextLine.startsWith('|')) {
+        } else if (nextLine.isEmpty ||
+            nextLine.startsWith('#') ||
+            nextLine.startsWith('*') ||
+            nextLine.startsWith('-') ||
+            nextLine.startsWith('>') ||
+            nextLine.startsWith('{%') ||
+            nextLine.startsWith('<') ||
+            nextLine.startsWith('```') ||
+            nextLine.startsWith('1.') ||
+            nextLine.startsWith('|')) {
           // Next line is a new block, this is a single-line embed
           return _ParseResult(
             block: EmbedBlock(url: url, caption: ''),
@@ -483,27 +616,29 @@ class MarkdownParser {
     bool foundEndEmbed = false;
 
     // Only look for endembed within a reasonable range (max 10 lines)
-    final maxSearchLines = (start + 10 < lines.length) ? start + 10 : lines.length;
-    
+    final maxSearchLines = (start + 10 < lines.length)
+        ? start + 10
+        : lines.length;
+
     while (i < maxSearchLines) {
       final currentLine = lines[i].trim();
-      
+
       if (currentLine.contains('{% endembed %}')) {
         foundEndEmbed = true;
         break;
       }
-      
+
       // If we hit another block marker, stop looking
       if (currentLine.startsWith('{%') && !currentLine.contains('endembed')) {
         break;
       }
-      if (currentLine.startsWith('#') || 
+      if (currentLine.startsWith('#') ||
           currentLine.startsWith('<table') ||
           currentLine.startsWith('<div') ||
           currentLine.startsWith('<details')) {
         break;
       }
-      
+
       if (currentLine.isNotEmpty && !currentLine.startsWith('{%')) {
         caption = currentLine;
       }
@@ -847,7 +982,7 @@ class MarkdownParser {
     // Skip separator row (|---|---|)
     if (i < lines.length) {
       final separatorLine = lines[i].trim();
-      if (separatorLine.startsWith('|') && 
+      if (separatorLine.startsWith('|') &&
           separatorLine.contains('-') &&
           !separatorLine.contains(RegExp(r'[a-zA-Z0-9]'))) {
         i++;
@@ -857,7 +992,7 @@ class MarkdownParser {
     // Parse data rows
     while (i < lines.length) {
       final line = lines[i].trim();
-      
+
       // Stop if not a table row
       if (!line.startsWith('|') || !line.endsWith('|')) {
         break;
@@ -868,7 +1003,7 @@ class MarkdownParser {
           .split('|')
           .map((cell) => _decodeHtmlEntities(cell.trim()))
           .toList();
-      
+
       if (cells.isNotEmpty) {
         rows.add(cells);
       }
@@ -1154,9 +1289,13 @@ class MarkdownParser {
       i++;
     }
 
+    // IMPORTANT: Always advance at least one line to prevent infinite loops
+    // This handles cases where we break immediately (e.g., orphan tags)
+    final nextIndex = i > start ? i : start + 1;
+
     return _ParseResult(
       block: ParagraphBlock(text: paragraphLines.join(' ')),
-      nextIndex: i,
+      nextIndex: nextIndex,
     );
   }
 
