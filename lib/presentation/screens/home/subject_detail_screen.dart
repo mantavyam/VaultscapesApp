@@ -262,6 +262,23 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     _log('Refresh complete');
   }
 
+  /// Retry loading content after an error
+  Future<void> _retryLoadContent() async {
+    if (_subject?.gitbookUrl == null) return;
+    _log('Retrying content load for: ${_subject!.gitbookUrl}');
+    
+    // Reset error state and reload
+    setState(() {
+      _errorMessage = null;
+      _errorType = null;
+      _isLoading = true;
+    });
+    
+    // Clear cache and reload fresh
+    await _contentService.clearCacheFor(_subject!.gitbookUrl!);
+    await _loadContent(_subject!.gitbookUrl!);
+  }
+
   void _navigateToSubject(SubjectInfo subject) {
     _closeSidebar();
     context.go(RouteConstants.subjectPath(widget.semesterId, subject.code));
@@ -366,7 +383,17 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                       icon: Icon(
                         _isRefreshing ? RadixIcons.reload : RadixIcons.reload,
                       ),
-                      onPressed: _isRefreshing ? null : _refreshContent,
+                      onPressed: _isRefreshing 
+                          ? null 
+                          : () {
+                              if (_errorMessage != null) {
+                                // If there's an error, retry loading
+                                _retryLoadContent();
+                              } else {
+                                // Otherwise, refresh content
+                                _refreshContent();
+                              }
+                            },
                     ),
                   // Hierarchical sidebar toggle button
                   IconButton.ghost(
@@ -1058,9 +1085,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
       return ContentErrorWidget(
         message: _getErrorTitle(),
         details: _errorMessage,
-        onRetry: _subject?.gitbookUrl != null
-            ? () => _loadContent(_subject!.gitbookUrl!)
-            : null,
+        onRetry: () => _retryLoadContent(),
       );
     }
 

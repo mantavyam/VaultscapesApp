@@ -2,6 +2,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../providers/auth_provider.dart';
+import '../../providers/swipe_disable_notifier.dart';
 import 'feedback_form_tab.dart';
 import 'collaborate_form_tab.dart';
 import 'submission_success_screen.dart';
@@ -41,6 +42,13 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
   String? _selectedSection;
   SubmissionSuccessType? _showSuccess;
 
+  void _updateSwipeState() {
+    // Notify parent to disable swipe when inside a form
+    // Swipe should be enabled only on the selection screen
+    final shouldDisable = _selectedSection != null || _showSuccess != null;
+    SwipeDisableNotifier.setSwipeDisabled(context, shouldDisable);
+  }
+
   void _goBack() {
     if (_showSuccess != null) {
       // From success screen, go back to selection
@@ -51,10 +59,37 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     } else if (_selectedSection != null) {
       setState(() => _selectedSection = null);
     }
+    // Re-enable swipe when returning to selection
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateSwipeState();
+    });
+  }
+
+  void _selectSection(String section) {
+    setState(() => _selectedSection = section);
+    // Disable swipe when entering a form
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateSwipeState();
+    });
   }
 
   void _onSubmissionSuccess(SubmissionSuccessType type) {
     setState(() => _showSuccess = type);
+    // Keep swipe disabled on success screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateSwipeState();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Re-enable swipe when this screen is disposed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        SwipeDisableNotifier.setSwipeDisabled(context, false);
+      }
+    });
+    super.dispose();
   }
 
   @override
@@ -67,10 +102,16 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
     }
 
     return PopScope(
-      canPop: _selectedSection == null,
+      // When at selection screen (_selectedSection == null), prevent pop
+      // to avoid triggering parent PageView navigation
+      // The main navigation screen handles app exit when on this tab
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedSection != null) {
-          _goBack();
+        if (!didPop) {
+          if (_selectedSection != null) {
+            _goBack();
+          }
+          // If at selection screen, do nothing - main nav handles exit
         }
       },
       child: Consumer<AuthProvider>(
@@ -229,7 +270,7 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                   title: 'Provide\nFeedback',
                   subtitle: 'Report · Suggest · Improve',
                   badgeText: 'Help Us Serve You Better',
-                  onTap: () => setState(() => _selectedSection = 'feedback'),
+                  onTap: () => _selectSection('feedback'),
                 ),
               ),
 
@@ -244,7 +285,7 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                   title: 'Collaborate\nNow',
                   subtitle: 'Submit · Share · Contribute',
                   badgeText: 'Join the Community',
-                  onTap: () => setState(() => _selectedSection = 'collaborate'),
+                  onTap: () => _selectSection('collaborate'),
                 ),
               ),
             ],
@@ -288,20 +329,13 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
             decoration: BoxDecoration(
               color: theme.colorScheme.card,
               borderRadius: BorderRadius.circular(FormSpacing.lg),
-              border: Border.all(
-                color: theme.colorScheme.border,
-                width: 1,
-              ),
+              border: Border.all(color: theme.colorScheme.border, width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top-left icon
-                Icon(
-                  icon,
-                  size: iconSize,
-                  color: theme.colorScheme.foreground,
-                ),
+                Icon(icon, size: iconSize, color: theme.colorScheme.foreground),
 
                 const Spacer(flex: 2),
 

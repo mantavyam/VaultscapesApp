@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../../core/services/connectivity_service.dart';
 
 /// Welcome screen - first screen shown to users
 class WelcomeScreen extends StatelessWidget {
@@ -174,7 +175,7 @@ class WelcomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(LucideIcons.chrome, size: 20),
+                      Icon(BootstrapIcons.google, size: 20),
                       SizedBox(width: 12),
                       Text('Continue with Google'),
                     ],
@@ -190,6 +191,37 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   Future<void> _handleGoogleSignIn(BuildContext context, BuildContext sheetContext) async {
+    // Check internet connectivity first
+    final connectivityService = ConnectivityService();
+    final isConnected = await connectivityService.checkConnectivity();
+    
+    if (!isConnected) {
+      closeSheet(sheetContext); // Close bottom sheet
+      if (context.mounted) {
+        showToast(
+          context: context,
+          builder: (context, overlay) {
+            return SurfaceCard(
+              child: Basic(
+                title: const Text('No Internet Connection'),
+                content: const Text('Please connect to the internet to sign in with Google.'),
+                leading: Icon(
+                  Icons.wifi_off_rounded,
+                  color: Theme.of(context).colorScheme.destructive,
+                ),
+                trailing: IconButton.ghost(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => overlay.close(),
+                ),
+              ),
+            );
+          },
+          location: ToastLocation.bottomCenter,
+        );
+      }
+      return;
+    }
+    
     closeSheet(sheetContext); // Close bottom sheet
     
     final authProvider = context.read<AuthProvider>();
@@ -199,7 +231,16 @@ class WelcomeScreen extends StatelessWidget {
     
     if (success && context.mounted) {
       await onboardingProvider.completeOnboarding();
-      context.go(RouteConstants.home);
+      
+      // Check if user has completed profile setup before (returning user)
+      if (onboardingProvider.hasCompletedProfileSetup) {
+        // Returning user - go directly to home
+        onboardingProvider.markAsReturningUser();
+        context.go(RouteConstants.home);
+      } else {
+        // First-time user - go to profile setup
+        context.go(RouteConstants.profileSetup);
+      }
     }
   }
 

@@ -36,32 +36,71 @@ class _SemesterOverviewScreenState extends State<SemesterOverviewScreen> {
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
 
+    // Initialize PageController with default page 0
+    // Will be updated in postFrameCallback after semesters are loaded
+    _pageController = PageController();
+
+    // Listen to page changes to update appbar only when page actually settles
+    _pageController.addListener(_onPageScroll);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final semId = int.tryParse(widget.semesterId);
       if (semId != null) {
         context.read<NavigationProvider>().selectSemester(semId);
-        // Initialize PageController to correct page after semesters are loaded
+        // Find the correct page index for this semester
         final navProvider = context.read<NavigationProvider>();
         final semesters = navProvider.semesters;
         final index = semesters.indexWhere((s) => s.id == semId);
-        if (index != -1) {
+        if (index != -1 && index != 0) {
           setState(() {
             _currentPageIndex = index;
           });
-          _pageController = PageController(initialPage: index);
+          // Jump to the correct page (no animation needed on initial load)
+          _pageController.jumpToPage(index);
+        } else if (index == 0) {
+          setState(() {
+            _currentPageIndex = 0;
+          });
         }
       }
     });
-
-    // Initialize with default page controller (will be updated in postFrameCallback)
-    _pageController = PageController();
   }
 
   @override
   void dispose() {
+    _pageController.removeListener(_onPageScroll);
     _pageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Listen to page scroll and only update index when page has settled
+  void _onPageScroll() {
+    if (!_pageController.hasClients) return;
+
+    // Only update when the page has fully settled (no partial values)
+    final page = _pageController.page;
+    if (page != null && page == page.roundToDouble()) {
+      final newIndex = page.round();
+      if (newIndex != _currentPageIndex) {
+        _updateCurrentPage(newIndex);
+      }
+    }
+  }
+
+  void _updateCurrentPage(int index) {
+    if (_isPageAnimating) return;
+
+    final navProvider = context.read<NavigationProvider>();
+    final semesters = navProvider.semesters;
+    if (index >= 0 && index < semesters.length) {
+      setState(() {
+        _currentPageIndex = index;
+      });
+      // Update URL without navigating (keeps history clean)
+      final semester = semesters[index];
+      context.go(RouteConstants.semesterPath(semester.id.toString()));
+    }
   }
 
   void _onScroll() {
@@ -85,18 +124,9 @@ class _SemesterOverviewScreenState extends State<SemesterOverviewScreen> {
   }
 
   void _onPageChanged(int index) {
-    if (_isPageAnimating) return;
-
-    final navProvider = context.read<NavigationProvider>();
-    final semesters = navProvider.semesters;
-    if (index >= 0 && index < semesters.length) {
-      setState(() {
-        _currentPageIndex = index;
-      });
-      // Update URL without navigating (keeps history clean)
-      final semester = semesters[index];
-      context.go(RouteConstants.semesterPath(semester.id.toString()));
-    }
+    // Page change is now handled by _onPageScroll listener
+    // This callback is kept for compatibility but the actual update
+    // only happens when the page has fully settled
   }
 
   void _navigateToSemester(int index) {
@@ -118,6 +148,9 @@ class _SemesterOverviewScreenState extends State<SemesterOverviewScreen> {
           setState(() {
             _isPageAnimating = false;
           });
+          // Explicitly update the current page after animation completes
+          // This ensures appbar and navigation cards sync when using button navigation
+          _updateCurrentPage(index);
         });
   }
 

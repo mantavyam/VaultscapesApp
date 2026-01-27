@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../providers/feedback_provider.dart';
 import '../../../data/models/collaboration_model.dart';
+import '../../../core/services/connectivity_service.dart';
 import 'feedback_collaborate_screen.dart';
 import 'submission_loading_overlay.dart';
 
@@ -1371,6 +1372,17 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
   void _submitCollaboration() async {
     // === STRONGER UNFOCUS RIGHT AT THE START ===
     FocusManager.instance.primaryFocus?.unfocus();
+    
+    // Check internet connectivity first
+    final connectivityService = ConnectivityService();
+    final isConnected = await connectivityService.checkConnectivity();
+    
+    if (!isConnected) {
+      _showValidationError(
+        'No internet connection. Please connect to the internet and try again.',
+      );
+      return;
+    }
     
     setState(() {
       _errors.clear();

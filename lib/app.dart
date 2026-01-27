@@ -1,4 +1,5 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/navigation_provider.dart';
@@ -32,9 +33,7 @@ class VaultscapesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Theme Provider
-        ChangeNotifierProvider<ThemeProvider>(
-          create: (_) => ThemeProvider(),
-        ),
+        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
 
         // Onboarding Provider
         ChangeNotifierProvider<OnboardingProvider>(
@@ -48,20 +47,46 @@ class VaultscapesApp extends StatelessWidget {
 
         // Navigation Provider
         ChangeNotifierProvider<NavigationProvider>(
-          create: (_) => NavigationProvider(
-            navigationRepository: navigationRepository,
-          ),
+          create: (_) =>
+              NavigationProvider(navigationRepository: navigationRepository),
         ),
 
         // Feedback Provider
         ChangeNotifierProvider<FeedbackProvider>(
-          create: (_) => FeedbackProvider(
-            feedbackRepository: feedbackRepository,
-          ),
+          create: (_) =>
+              FeedbackProvider(feedbackRepository: feedbackRepository),
         ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
+          // Determine if dark mode is active
+          final isDarkMode =
+              themeProvider.themeMode == ThemeMode.dark ||
+              (themeProvider.themeMode == ThemeMode.system &&
+                  WidgetsBinding
+                          .instance
+                          .platformDispatcher
+                          .platformBrightness ==
+                      Brightness.dark);
+
+          // Update status bar icons based on theme
+          // Dark mode = light icons (white), Light mode = dark icons (black)
+          SystemChrome.setSystemUIOverlayStyle(
+            SystemUiOverlayStyle(
+              statusBarColor: const Color(0x00000000), // Transparent
+              statusBarIconBrightness: isDarkMode
+                  ? Brightness.light
+                  : Brightness.dark,
+              statusBarBrightness: isDarkMode
+                  ? Brightness.dark
+                  : Brightness.light, // iOS
+              systemNavigationBarColor: const Color(0x00000000), // Transparent
+              systemNavigationBarIconBrightness: isDarkMode
+                  ? Brightness.light
+                  : Brightness.dark,
+            ),
+          );
+
           return ShadcnApp.router(
             title: 'Vaultscapes',
             debugShowCheckedModeBanner: false,

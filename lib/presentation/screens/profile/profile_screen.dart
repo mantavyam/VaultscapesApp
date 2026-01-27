@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../widgets/common/animated_gradient_border.dart';
+import '../../../core/services/connectivity_service.dart';
 import 'edit_profile_dialog.dart';
 
 /// Profile screen with guest/authenticated views
@@ -55,17 +57,12 @@ class _GuestProfileView extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'Guest User',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Sign in to unlock all features',
-            style: TextStyle(
-              color: theme.colorScheme.mutedForeground,
-            ),
+            style: TextStyle(color: theme.colorScheme.mutedForeground),
           ),
           const SizedBox(height: 24),
 
@@ -127,29 +124,52 @@ class _AuthenticatedProfileView extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Profile Avatar - use Google profile image if available
-          if (photoUrl != null && photoUrl.isNotEmpty)
-            ClipOval(
-              child: Image.network(
-                photoUrl,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Avatar(
-                    size: 100,
-                    initials: user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-                    backgroundColor: theme.colorScheme.primary,
-                  );
-                },
-              ),
-            )
-          else
-            Avatar(
-              size: 100,
-              initials: user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-              backgroundColor: theme.colorScheme.primary,
-            ),
+          // Profile Avatar with animated gradient border
+          AnimatedGradientBorder(
+            size: 100,
+            borderWidth: 3,
+            animationDuration: const Duration(seconds: 3),
+            child: photoUrl != null && photoUrl.isNotEmpty
+                ? Image.network(
+                    photoUrl,
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 100,
+                        height: 100,
+                        color: theme.colorScheme.primary,
+                        child: Center(
+                          child: Text(
+                            user?.displayName?.substring(0, 1).toUpperCase() ??
+                                'U',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 100,
+                    height: 100,
+                    color: theme.colorScheme.primary,
+                    child: Center(
+                      child: Text(
+                        user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
           const SizedBox(height: 16),
 
           // User Name with Edit Button
@@ -173,9 +193,7 @@ class _AuthenticatedProfileView extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             user?.email ?? '',
-            style: TextStyle(
-              color: theme.colorScheme.mutedForeground,
-            ),
+            style: TextStyle(color: theme.colorScheme.mutedForeground),
           ),
           const SizedBox(height: 32),
 
@@ -197,7 +215,10 @@ class _AuthenticatedProfileView extends StatelessWidget {
             child: GestureDetector(
               onTap: () => _showLogoutConfirmation(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
@@ -239,22 +260,56 @@ class _AuthenticatedProfileView extends StatelessWidget {
   void _showLogoutConfirmation(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Sign Out'),
           content: const Text('Are you sure you want to sign out?'),
           actions: [
             OutlineButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             GestureDetector(
               onTap: () async {
-                Navigator.of(context).pop();
+                // Check internet connectivity first
+                final connectivityService = ConnectivityService();
+                final isConnected = await connectivityService.checkConnectivity();
+                
+                if (!isConnected) {
+                  Navigator.of(dialogContext).pop();
+                  if (context.mounted) {
+                    showToast(
+                      context: context,
+                      builder: (context, overlay) {
+                        return SurfaceCard(
+                          child: Basic(
+                            title: const Text('No Internet Connection'),
+                            content: const Text('Please connect to the internet to sign out.'),
+                            leading: Icon(
+                              Icons.wifi_off_rounded,
+                              color: Theme.of(context).colorScheme.destructive,
+                            ),
+                            trailing: IconButton.ghost(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => overlay.close(),
+                            ),
+                          ),
+                        );
+                      },
+                      location: ToastLocation.bottomCenter,
+                    );
+                  }
+                  return;
+                }
+                
+                Navigator.of(dialogContext).pop();
                 await authProvider.signOut();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDC2626),
                   borderRadius: BorderRadius.circular(6),
@@ -290,10 +345,7 @@ class _SettingsSection extends StatelessWidget {
             padding: EdgeInsets.all(16),
             child: Text(
               'Management',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           // Your Collaboration tile
@@ -316,7 +368,7 @@ class _SettingsSection extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.palette,
+                  LucideIcons.cloudMoon,
                   color: theme.colorScheme.mutedForeground,
                 ),
                 const SizedBox(width: 16),
@@ -326,13 +378,11 @@ class _SettingsSection extends StatelessWidget {
                     children: [
                       const Text(
                         'Theme',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Choose app appearance',
+                        'Set Preference',
                         style: TextStyle(
                           fontSize: 12,
                           color: theme.colorScheme.mutedForeground,
@@ -431,7 +481,9 @@ class _ThemeOption extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? theme.colorScheme.background : Colors.transparent,
+            color: isSelected
+                ? theme.colorScheme.background
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
             boxShadow: isSelected
                 ? [
@@ -468,29 +520,43 @@ class _QuickLinksSection extends StatelessWidget {
             padding: EdgeInsets.all(16),
             child: Text(
               'Quick Links',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          _SettingsListTile(
+            icon: BootstrapIcons.discord,
+            title: 'Join your friends',
+            onTap: () => _launchUrl('https://discord.com/invite/AQ7PNzdCnC'),
+          ),
+          _SettingsListTile(
+            icon: Icons.people_outline,
+            title: 'Collaborators',
+            onTap: () => _launchUrl(
+              'https://mantavyam.gitbook.io/vaultscapes/collaborators',
             ),
           ),
           _SettingsListTile(
             icon: Icons.help_outline,
             title: 'How to use database?',
-            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/how-to-use-database'),
+            onTap: () => _launchUrl(
+              'https://mantavyam.gitbook.io/vaultscapes/how-to-use-database',
+            ),
           ),
           _SettingsListTile(
             icon: Icons.handshake_outlined,
             title: 'How to collaborate?',
-            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/how-to-collaborate'),
+            onTap: () => _launchUrl(
+              'https://mantavyam.gitbook.io/vaultscapes/how-to-collaborate',
+            ),
           ),
           _SettingsListTile(
-            icon: Icons.people_outline,
-            title: 'Collaborators',
-            onTap: () => _launchUrl('https://mantavyam.gitbook.io/vaultscapes/collaborators'),
+            icon: BootstrapIcons.github,
+            title: 'Star Repo on Github',
+            onTap: () =>
+                _launchUrl('https://github.com/mantavyam/vaultscapesDB'),
           ),
           _SettingsListTile(
-            icon: Icons.star_outline,
+            icon: BootstrapIcons.googlePlay,
             title: 'Rate App on Play Store',
             onTap: () {
               showToast(
@@ -499,7 +565,9 @@ class _QuickLinksSection extends StatelessWidget {
                   return SurfaceCard(
                     child: Basic(
                       title: const Text('Coming soon'),
-                      subtitle: const Text('Play Store review will be available after release'),
+                      subtitle: const Text(
+                        'Play Store review will be available after release',
+                      ),
                       trailing: IconButton.ghost(
                         icon: const Icon(Icons.close),
                         onPressed: () => overlay.close(),
@@ -574,10 +642,7 @@ class _AppInfoSection extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 AppConstants.appName,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -628,10 +693,7 @@ class _SettingsListTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: theme.colorScheme.mutedForeground,
-            ),
+            Icon(icon, color: theme.colorScheme.mutedForeground),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -639,9 +701,7 @@ class _SettingsListTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
@@ -656,10 +716,7 @@ class _SettingsListTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              color: theme.colorScheme.mutedForeground,
-            ),
+            Icon(Icons.chevron_right, color: theme.colorScheme.mutedForeground),
           ],
         ),
       ),

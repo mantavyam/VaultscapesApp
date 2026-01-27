@@ -5,7 +5,6 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/common/error_widget.dart';
 import '../../../core/constants/url_constants.dart';
 
 /// AlphaSignal WebView screen (Breakthrough) - requires authentication
@@ -26,7 +25,6 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   bool _isContentReady = false;
   bool _isNavigating = false;
   String _loadingText = 'Updated daily except weekends';
-  int _mainFrameErrorCount = 0; // Track main frame errors only
 
   // Random loading messages
   static const List<String> _loadingMessages = [
@@ -464,7 +462,6 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             setState(() {
               _hasError = false;
               _isContentReady = false;
-              _mainFrameErrorCount = 0; // Reset error count
             });
           },
           onPageFinished: (String url) async {
@@ -509,16 +506,11 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             debugPrint('WebView onWebResourceError: ${error.description}, isForMainFrame: ${error.isForMainFrame}');
             
             // Only show error for main frame failures, ignore subresource errors
-            if (error.isForMainFrame == true) {
-              _mainFrameErrorCount++;
-              
-              // Only mark as error if we have persistent main frame failures
-              if (_mainFrameErrorCount > 1 && mounted) {
-                setState(() {
-                  _hasError = true;
-                  _isContentReady = true;
-                });
-              }
+            if (error.isForMainFrame == true && mounted) {
+              setState(() {
+                _hasError = true;
+                _isContentReady = false; // Ensure loading overlay shows while error state renders
+              });
             }
             // Ignore subresource errors (images, scripts, etc.) - they don't affect page usability
           },
@@ -743,10 +735,16 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         }
 
         return PopScope(
-          canPop: !_canGoBack,
+          // Always prevent pop - we handle back navigation internally or let it exit app
+          canPop: false,
           onPopInvokedWithResult: (didPop, result) async {
             if (!didPop) {
-              await _handleBackNavigation();
+              // If webview can go back, navigate within webview
+              if (_canGoBack) {
+                await _handleBackNavigation();
+              }
+              // If webview can't go back, do nothing - we're at the root of this tab
+              // The main navigation screen will handle exiting the app if needed
             }
           },
           child: Scaffold(
@@ -899,8 +897,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
 
     return Stack(
       children: [
-        // Always show the WebView, don't hide it
-        Positioned.fill(child: WebViewWidget(controller: _controller!)),
+        // Only show WebView if no error, otherwise keep it hidden
+        if (!_hasError)
+          Positioned.fill(child: WebViewWidget(controller: _controller!)),
         // Show loading overlay until content is ready
         if (!_isContentReady || _isNavigating)
           Positioned.fill(
@@ -935,7 +934,45 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   }
 
   Widget _buildErrorState() {
-    return AppErrorWidget.network(onRetry: _refresh);
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 72,
+              color: theme.colorScheme.mutedForeground,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Network Error',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.foreground,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Unable to load content. Please check your internet connection and try again.',
+              style: TextStyle(
+                color: theme.colorScheme.mutedForeground,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            OutlineButton(
+              onPressed: _refresh,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _refresh() {

@@ -125,9 +125,28 @@ class ContentErrorWidget extends StatelessWidget {
     this.onRetry,
   });
 
+  /// Filter out technical error details that shouldn't be shown to users
+  String? _filterErrorDetails(String? details) {
+    if (details == null) return null;
+    
+    // Remove technical host lookup errors and network exceptions
+    if (details.contains('Failed host lookup') || 
+        details.contains('mantavyam.gitbook.io') ||
+        details.contains('gitbook.io') ||
+        details.contains('SocketException') ||
+        details.contains('HttpException') ||
+        details.toLowerCase().contains('network error:')) {
+      // Return generic message instead of technical details
+      return 'Unable to load content. Please check your connection.';
+    }
+    
+    return details;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final filteredDetails = _filterErrorDetails(details);
 
     return Center(
       child: Padding(
@@ -146,9 +165,9 @@ class ContentErrorWidget extends StatelessWidget {
               style: theme.typography.h4,
               textAlign: TextAlign.center,
             ),
-            if (details != null) ...[
+            if (filteredDetails != null) ...[
               const SizedBox(height: 8),
-              Text(details!).muted(),
+              Text(filteredDetails).muted(),
             ],
             if (onRetry != null) ...[
               const SizedBox(height: 24),

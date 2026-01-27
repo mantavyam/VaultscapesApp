@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app.dart';
@@ -6,10 +7,28 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/navigation_repository.dart';
 import 'data/repositories/feedback_repository.dart';
 import 'data/services/local_storage_service.dart';
+import 'core/services/connectivity_service.dart';
 
 void main() async {
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Configure system UI to show status bar (not full screen)
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.edgeToEdge,
+    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+  );
+
+  // Set status bar style for both light and dark modes
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Color(0x00000000), // Transparent
+      statusBarIconBrightness: Brightness.dark, // Dark icons for light theme
+      statusBarBrightness: Brightness.light, // Light status bar for iOS
+      systemNavigationBarColor: Color(0x00000000), // Transparent
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
 
   // Initialize Firebase
   await Firebase.initializeApp();
@@ -20,6 +39,13 @@ void main() async {
   // Initialize services
   final storageService = LocalStorageService.instance;
   await storageService.init();
+  
+  // Initialize connectivity service
+  final connectivityService = ConnectivityService();
+  // Start monitoring connectivity changes
+  connectivityService.connectivityStream.listen((isConnected) {
+    debugPrint('Connectivity changed: $isConnected');
+  });
 
   // Initialize repositories
   final authRepository = AuthRepository();

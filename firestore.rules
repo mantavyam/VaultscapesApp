@@ -66,6 +66,27 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // USERS COLLECTION
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    match /users/{userId} {
+      // Users can create their own profile document (uid must match document ID)
+      allow create: if isAuthenticated() 
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId;
+      
+      // Users can read their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can update their own profile (uid must remain unchanged)
+      allow update: if isOwner(userId) 
+                    && request.resource.data.uid == userId;
+      
+      // Only admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // DEFAULT DENY
     // ═══════════════════════════════════════════════════════════════════════════
     

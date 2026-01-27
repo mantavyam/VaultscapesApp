@@ -3,14 +3,16 @@ class RouteConstants {
   RouteConstants._();
 
   // Root routes
-  static const String welcome = '/';
+  static const String splash = '/';
+  static const String welcome = '/welcome';
   static const String main = '/main';
   static const String profileSetup = '/profile-setup';
 
   // Home routes
   static const String home = '/main/home';
   static const String semester = '/main/home/semester/:semesterId';
-  static const String subject = '/main/home/semester/:semesterId/subject/:subjectId';
+  static const String subject =
+      '/main/home/semester/:semesterId/subject/:subjectId';
 
   // Tab routes
   static const String alphaSignal = '/main/alphasignal';
@@ -18,6 +20,7 @@ class RouteConstants {
   static const String profile = '/main/profile';
 
   // Route names
+  static const String splashName = 'splash';
   static const String welcomeName = 'welcome';
   static const String mainName = 'main';
   static const String profileSetupName = 'profileSetup';
