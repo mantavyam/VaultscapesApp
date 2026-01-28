@@ -9,16 +9,16 @@ import '../../providers/auth_provider.dart';
 import '../../../core/constants/url_constants.dart';
 import '../../../core/constants/route_constants.dart';
 
-/// AlphaSignal WebView screen (Breakthrough) - requires authentication
-class AlphaSignalWebViewScreen extends StatefulWidget {
-  const AlphaSignalWebViewScreen({super.key});
+/// Breakthrough WebView screen (formerly Breakthrough.ai) - requires authentication
+class BreakthroughWebViewScreen extends StatefulWidget {
+  const BreakthroughWebViewScreen({super.key});
 
   @override
-  State<AlphaSignalWebViewScreen> createState() =>
-      _AlphaSignalWebViewScreenState();
+  State<BreakthroughWebViewScreen> createState() =>
+      _BreakthroughWebViewScreenState();
 }
 
-class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
+class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
   WebViewController? _controller;
   bool _isControllerInitialized = false;
   bool _hasError = false;
@@ -333,7 +333,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             border-color: var(--border-zinc) !important; 
         }
 
-        /* AlphaSignal Orange Accent */
+        /* Breakthrough Orange Accent */
         span[style*="color:#f74904"], 
         a[style*="color:#f74904"],
         td[style*="color:#f74904"],
@@ -473,7 +473,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
             // Apply JavaScript to hide elements based on URL
-            if (_isAlphaSignalEmailPage(url)) {
+            if (_isBreakthroughEmailPage(url)) {
               debugPrint('WebView: Running hide elements JS');
               await _controller!.runJavaScript(_hideEmailElementsJs);
 
@@ -521,13 +521,13 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+      ..loadRequest(Uri.parse(UrlConstants.breakthroughUrl));
 
     _isControllerInitialized = true;
     if (mounted) setState(() {});
   }
 
-  /// Inject logged-in user's name and remove AlphaSignal logo
+  /// Inject logged-in user's name and remove Breakthrough logo
   Future<void> _injectUserNameAndRemoveLogo() async {
     try {
       final authProvider = context.read<AuthProvider>();
@@ -537,8 +537,8 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       final injectionJs =
           '''
         (function() {
-          // Remove AlphaSignal logo
-          var logos = document.querySelectorAll('img[alt="AlphaSignal Logo"]');
+          // Remove Breakthrough logo
+          var logos = document.querySelectorAll('img[alt="Breakthrough Logo"]');
           logos.forEach(function(logo) {
             logo.style.display = 'none';
             // Also hide the divider after logo if exists
@@ -555,7 +555,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
               var iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
               if (iframeDoc) {
                 // Remove logo in iframe
-                var iframeLogos = iframeDoc.querySelectorAll('img[alt="AlphaSignal Logo"]');
+                var iframeLogos = iframeDoc.querySelectorAll('img[alt="Breakthrough Logo"]');
                 iframeLogos.forEach(function(logo) {
                   logo.style.display = 'none';
                   var nextEl = logo.nextElementSibling;
@@ -616,8 +616,8 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
     }
   }
 
-  /// Check if URL is an AlphaSignal email page
-  bool _isAlphaSignalEmailPage(String url) {
+  /// Check if URL is a Breakthrough email page
+  bool _isBreakthroughEmailPage(String url) {
     return url == 'https://alphasignal.ai/last-email' ||
         url.contains('alphasignal.ai/email/');
   }
@@ -647,7 +647,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       _canGoBack = false;
       _isContentReady = false;
     });
-    _controller!.loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
+    _controller!.loadRequest(Uri.parse(UrlConstants.breakthroughUrl));
   }
 
   /// Load a specific URL in the main webview

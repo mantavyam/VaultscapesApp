@@ -5,8 +5,8 @@ class UrlConstants {
   // GitBook Base URLs
   static const String gitBookBase = 'https://mantavyam.gitbook.io/vaultscapes';
 
-  // AlphaSignal
-  static const String alphaSignalUrl = 'https://alphasignal.ai/last-email';
+  // Breakthrough (formerly AlphaSignal.ai)
+  static const String breakthroughUrl = 'https://alphasignal.ai/last-email';
 
   // Quick Links
   static const String openSearchUrl = '$gitBookBase/open-search';

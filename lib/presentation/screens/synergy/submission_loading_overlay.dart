@@ -1,5 +1,5 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'feedback_collaborate_screen.dart';
+import 'synergy_screen.dart';
 
 /// Full-screen loading overlay shown during form submission
 class SubmissionLoadingOverlay extends StatefulWidget {
@@ -128,8 +128,9 @@ class _SubmissionLoadingOverlayState extends State<SubmissionLoadingOverlay>
                         SizedBox(
                           width: 200,
                           child: LinearProgressIndicator(
-                            backgroundColor:
-                                theme.colorScheme.muted.withValues(alpha: 0.3),
+                            backgroundColor: theme.colorScheme.muted.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                         ),
                         const SizedBox(height: FormSpacing.md),

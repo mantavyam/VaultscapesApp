@@ -5,8 +5,8 @@ import '../providers/auth_provider.dart';
 import '../providers/swipe_disable_notifier.dart';
 import '../widgets/navigation/custom_bottom_nav_bar.dart';
 import 'home/root_homepage_screen.dart';
-import 'alphasignal/alphasignal_webview_screen.dart';
-import 'feedback_collaborate/feedback_collaborate_screen.dart';
+import 'breakthrough/breakthrough_webview_screen.dart';
+import 'synergy/synergy_screen.dart';
 import 'profile/profile_screen.dart';
 
 /// Main navigation screen with bottom navigation bar
@@ -35,8 +35,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   // Use PageView to enable swipe gestures between tabs
   final List<Widget> _screens = const [
     RootHomepageScreen(),
-    AlphaSignalWebViewScreen(),
-    FeedbackCollaborateScreen(),
+    BreakthroughWebViewScreen(),
+    SynergyScreen(),
     ProfileScreen(),
   ];
 

@@ -10,7 +10,7 @@ import '../../../data/services/markdown_parser.dart';
 import '../../widgets/content/markdown_content_renderer.dart';
 import '../../widgets/content/content_loading_skeleton.dart';
 import '../../../core/constants/route_constants.dart';
-import '../feedback_collaborate/feedback_collaborate_screen.dart';
+import '../synergy/synergy_screen.dart';
 
 /// Subject detail screen with:
 /// - Breadcrumb navigation with horizontal scroll: UG/BTECH/CSE-IT/SEM-X/SUBCODE

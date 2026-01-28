@@ -9,7 +9,7 @@ The **Breakthrough** UI screen displays AI newsletter content from AlphaSignal.a
 ### Main Components
 
 ```
-AlphaSignalWebViewScreen (StatefulWidget)
+BreakthroughWebViewScreen (StatefulWidget)
 ├── Main WebView (displays email content)
 ├── Loading Overlay (shown during page load)
 ├── FAB (opens archive bottom sheet)
@@ -18,7 +18,7 @@ AlphaSignalWebViewScreen (StatefulWidget)
 ```
 
 ### File Location
-`lib/presentation/screens/alphasignal/alphasignal_webview_screen.dart`
+`lib/presentation/screens/breakthrough/breakthrough_webview_screen.dart`
 
 ---
 

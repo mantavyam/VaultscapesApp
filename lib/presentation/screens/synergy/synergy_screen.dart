@@ -32,15 +32,14 @@ class FormDimensions {
 }
 
 /// Feedback and Collaboration screen with two stacked cards
-class FeedbackCollaborateScreen extends StatefulWidget {
-  const FeedbackCollaborateScreen({super.key});
+class SynergyScreen extends StatefulWidget {
+  const SynergyScreen({super.key});
 
   @override
-  State<FeedbackCollaborateScreen> createState() =>
-      _FeedbackCollaborateScreenState();
+  State<SynergyScreen> createState() => _SynergyScreenState();
 }
 
-class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
+class _SynergyScreenState extends State<SynergyScreen> {
   String? _selectedSection;
   SubmissionSuccessType? _showSuccess;
 

@@ -52,7 +52,7 @@ Vaultscapes is a mobile-first educational resource aggregation platform designed
    - Pull-to-refresh functionality
    - Error handling for network failures
 
-4. **FEEDBACK + COLLABORATE Section**
+4. **SYNERGY Section** (formerly Feedback + Collaborate)
    - Two-tab layout
    - Complete feedback form with all fields
    - Complete collaboration form with file upload

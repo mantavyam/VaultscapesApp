@@ -86,10 +86,10 @@ lib/
 │   │   │   ├── root_homepage_screen.dart
 │   │   │   ├── semester_overview_screen.dart (renders markdown)
 │   │   │   └── subject_detail_screen.dart (renders markdown)
-│   │   ├── alphasignal/
-│   │   │   └── alphasignal_webview_screen.dart
-│   │   ├── feedback_collaborate/
-│   │   │   ├── feedback_collaborate_screen.dart
+│   │   ├── breakthrough/
+│   │   │   └── breakthrough_webview_screen.dart
+│   │   ├── synergy/
+│   │   │   ├── synergy_screen.dart
 │   │   │   ├── feedback_form_tab.dart
 │   │   │   └── collaborate_form_tab.dart
 │   │   ├── profile/

@@ -23,11 +23,11 @@ Your application consists of 19 screens organized into the following categories:
 - `RootHomepageScreen`: Carousel with proportional card sizing
 - `SemesterOverviewScreen`: PageView navigation with sidebar
 - `SubjectDetailScreen`: Content viewer with horizontal swipe
-- `AlphaSignalWebViewScreen`: WebView iframe integration
+- `BreakthroughWebViewScreen`: WebView iframe integration
 - `GitbookContentScreen`: External content rendering
 
 **Form & Input Screens:**
-- `FeedbackCollaborateScreen`: Dual-card selection with forms
+- `SynergyScreen`: Dual-card selection with forms
 - `FeedbackFormTab` & `CollaborateFormTab`: Multi-section forms
 - `SubmissionSuccessScreen`: Full-screen success state
 - `SubmissionLoadingOverlay`: Loading overlay
@@ -50,7 +50,7 @@ Your application consists of 19 screens organized into the following categories:
 
 **✅ What's Working Well:**
 
-1. **Proportional Sizing Philosophy**: Your `RootHomepageScreen` and `FeedbackCollaborateScreen` implement excellent proportional sizing patterns using `LayoutBuilder` and constraint-based calculations
+1. **Proportional Sizing Philosophy**: Your `RootHomepageScreen` and `SynergyScreen` implement excellent proportional sizing patterns using `LayoutBuilder` and constraint-based calculations
 2. **Responsive Card Design**: Selection cards adapt with `minDimension` calculations for consistent scaling
 3. **Constraint-Based Forms**: Forms use `ConstrainedBox(maxWidth: 640)` for readability
 4. **SafeArea Usage**: Proper SafeArea implementation in most screens
@@ -376,7 +376,7 @@ Height calculation:
 - Set `minChildSize = 0.3` and `maxChildSize = 0.95`
 - Allow full-screen expansion in micro viewports
 
-### 3.6 WebView Integration (`AlphaSignalWebViewScreen`)
+### 3.6 WebView Integration (`BreakthroughWebViewScreen`)
 
 **Current Issues:**
 - WebView assumes full-width availability
@@ -698,7 +698,7 @@ class ResponsiveTypography {
    - Compress section headers intelligently
 
 2. **Selection Screens**
-   - Enhance `FeedbackCollaborateScreen` card scaling
+   - Enhance `SynergyScreen` card scaling
    - Improve button and icon proportions
    - Add landscape-specific layouts
 
@@ -765,7 +765,7 @@ class ResponsiveTypography {
   - Stack user name below greeting (already implemented well)
   - Scale rotating phrase font: `(width * 0.04).clamp(13, 16)`
 
-### 6.2 FeedbackCollaborateScreen Improvements
+### 6.2 SynergyScreen Improvements
 
 **Selection Card Layout:**
 - Current: Vertical stack of two cards

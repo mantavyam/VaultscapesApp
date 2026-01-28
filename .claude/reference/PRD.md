@@ -49,8 +49,8 @@ User {
 Four-tab bottom navigation bar (persistent across authenticated/guest modes):
 
 1. **HOME** (Icon: Home/Dashboard)
-2. **ALPHASIGNAL.AI** (Icon: Brain/AI)
-3. **FEEDBACK + COLLABORATE** (Icon: MessageSquare/Handshake)
+2. **BREAKTHROUGH** (Icon: Brain/AI - formerly AlphaSignal.ai)
+3. **SYNERGY** (Icon: MessageSquare/Handshake - formerly Feedback + Collaborate)
 4. **PROFILE** (Icon: User/Account)
 
 #### 2.2.2 Navigation Behavior
@@ -158,7 +158,7 @@ Four-tab bottom navigation bar (persistent across authenticated/guest modes):
 
 ---
 
-### 2.4 ALPHASIGNAL.AI Section
+### 2.4 BREAKTHROUGH Section
 
 #### 2.4.1 WebView Implementation
 **Requirements:**
@@ -177,7 +177,7 @@ Four-tab bottom navigation bar (persistent across authenticated/guest modes):
 
 ---
 
-### 2.5 FEEDBACK + COLLABORATE Section
+### 2.5 SYNERGY Section
 
 #### 2.5.1 Layout Structure
 **Two-Big Squircle Card interface vertically stacked:** (TODO: Undo Tablist approach)

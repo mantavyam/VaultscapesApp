@@ -1,6 +1,6 @@
 ## FEEDBACK FORM
 
-Path: lib/presentation/screens/feedback_collaborate/feedback_form_tab.dart
+Path: lib/presentation/screens/synergy/feedback_form_tab.dart
 
 ```dart
 void _submitFeedback() async {
@@ -115,7 +115,7 @@ void _submitFeedback() async {
 
 ## COLLABORATE FORM
 
-Path: lib/presentation/screens/feedback_collaborate/collaborate_form_tab.dart
+Path: lib/presentation/screens/synergy/collaborate_form_tab.dart
 
 ```dart
 void _submitCollaboration() async {

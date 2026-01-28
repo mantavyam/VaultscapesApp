@@ -15,8 +15,8 @@ class RouteConstants {
       '/main/home/semester/:semesterId/subject/:subjectId';
 
   // Tab routes
-  static const String alphaSignal = '/main/alphasignal';
-  static const String feedbackCollaborate = '/main/feedback';
+  static const String breakthrough = '/main/breakthrough';
+  static const String synergy = '/main/synergy';
   static const String profile = '/main/profile';
 
   // Route names
@@ -27,8 +27,8 @@ class RouteConstants {
   static const String homeName = 'home';
   static const String semesterName = 'semester';
   static const String subjectName = 'subject';
-  static const String alphaSignalName = 'alphasignal';
-  static const String feedbackCollaborateName = 'feedbackCollaborate';
+  static const String breakthroughName = 'breakthrough';
+  static const String synergyName = 'synergy';
   static const String profileName = 'profile';
 
   // Helper methods

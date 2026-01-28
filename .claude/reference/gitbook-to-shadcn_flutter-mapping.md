@@ -831,6 +831,44 @@ Required packages:
 
 ---
 
+## Recent Implementation Updates
+
+### PDF Viewer Enhancements (January 2026)
+
+**Modal Bottom Sheet PDF Viewer:**
+- Implemented modal bottom sheet approach for PDF viewing, replacing full-screen navigation
+- Bottom sheet covers 85% of screen height with rounded top corners
+- Drag gesture disabled to prevent conflict with PDF scroll gestures
+- Close button (X icon) added since drag-to-dismiss is disabled
+
+**PDF Caching with flutter_cache_manager:**
+- Created `PdfCacheService` singleton for centralized PDF cache management
+- Cache configuration: 100MB max size, 7 days max age, 50 max files
+- Automatic cache cleanup when limits exceeded
+- Progress tracking during downloads with percentage indicator
+- Visual "Cached" indicator when loading from disk cache
+- Cache utilities available:
+  - `clearCache()` - clear all cached PDFs
+  - `getFormattedCacheSize()` - get human-readable size (e.g., "45.2 MB")
+  - `getCachedFileCount()` - count cached files
+  - `removeFromCache(url)` - remove specific PDF
+
+**Embed Block Handling:**
+- Enhanced embed block parsing for direct PDF URLs (Internet Archive, Gitbook)
+- Google Drive PDF URLs redirect to external browser
+- WebView integration for Google Docs, Sheets, Slides
+
+**Performance Improvements:**
+- PDFs load instantly on subsequent views (disk cache)
+- Reduced network usage through intelligent caching
+- Better user experience with loading state differentiation ("Loading from cache..." vs "Connecting...")
+
+**Dependencies Added:**
+- `flutter_cache_manager: ^3.4.1` - For PDF disk caching
+- `pdfx: ^2.9.2` - Native PDF rendering with gesture support
+
+---
+
 ## Future Enhancements
 
 1. **Syntax Highlighting**: Add code syntax highlighting for code blocks
