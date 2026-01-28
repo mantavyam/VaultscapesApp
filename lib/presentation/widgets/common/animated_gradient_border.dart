@@ -46,17 +46,18 @@ class _AnimatedGradientBorderState extends State<AnimatedGradientBorder>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Default gradient colors - vibrant rainbow gradient
+    // Default gradient colors - blue shades with white accents
     final colors =
         widget.gradientColors ??
         [
-          theme.colorScheme.primary,
-          const Color(0xFF8B5CF6), // Purple
-          const Color(0xFFEC4899), // Pink
-          const Color(0xFFF97316), // Orange
-          const Color(0xFF10B981), // Emerald
+          const Color(0xFF1E3A8A), // Dark Blue
           const Color(0xFF3B82F6), // Blue
-          theme.colorScheme.primary,
+          const Color(0xFFFFFFFF), // White accent
+          const Color(0xFF60A5FA), // Light Blue
+          const Color(0xFF93C5FD), // Lighter Blue
+          const Color(0xFFFFFFFF), // White accent
+          const Color(0xFF2563EB), // Medium Blue
+          const Color(0xFF1E3A8A), // Dark Blue
         ];
 
     return AnimatedBuilder(
@@ -137,15 +138,15 @@ class _AnimatedConicGradientBorderState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Default gradient colors - subtle professional gradient
+    // Default gradient colors - blue shades with white accents
     final colors =
         widget.gradientColors ??
         [
-          theme.colorScheme.primary,
-          theme.colorScheme.primary.withValues(alpha: 0.7),
-          const Color(0xFF8B5CF6), // Purple
-          const Color(0xFFEC4899), // Pink
-          theme.colorScheme.primary,
+          const Color(0xFF1E3A8A), // Dark Blue
+          const Color(0xFF3B82F6), // Blue
+          const Color(0xFFFFFFFF), // White accent
+          const Color(0xFF60A5FA), // Light Blue
+          const Color(0xFF1E3A8A), // Dark Blue
         ];
 
     return AnimatedBuilder(

@@ -14,6 +14,104 @@ class MarkdownParser {
     );
   }
 
+  /// Handle Unicode characters properly - convert escape sequences to actual characters
+  String _handleUnicodeCharacters(String text) {
+    // Handle escaped brackets around Unicode symbols like \[⤓\] -> ⤓
+    // Also handle [⤓] -> ⤓ and \[ ⤓ \] with spaces
+    text = text.replaceAll(RegExp(r'\\?\[\s*⤓\s*\\?\]'), '⤓');
+    text = text.replaceAll(RegExp(r'\\?\[\s*▶︎?\s*\\?\]'), '▶');
+    text = text.replaceAll(RegExp(r'\\?\[\s*▶\s*\\?\]'), '▶');
+
+    // Handle the play button triangle variations (U+25B6 and variations)
+    text = text.replaceAll('[ ▶︎ ]', '▶');
+    text = text.replaceAll('[▶︎]', '▶');
+    text = text.replaceAll('[ ▶ ]', '▶');
+    text = text.replaceAll('[▶]', '▶');
+
+    // Handle download arrow (U+2913)
+    text = text.replaceAll('[⤓]', '⤓');
+    text = text.replaceAll('[ ⤓ ]', '⤓');
+
+    // Unicode escape sequences
+    text = text.replaceAll(r'\u2913', '⤓');
+    text = text.replaceAll(r'\U2913', '⤓');
+    text = text.replaceAll(r'\u25B6', '▶');
+    text = text.replaceAll(r'\U25B6', '▶');
+    text = text.replaceAll(r'\u25b6', '▶');
+
+    // Other common Unicode characters
+    text = text.replaceAll(r'\u2192', '→'); // Right arrow
+    text = text.replaceAll(r'\u2190', '←'); // Left arrow
+    text = text.replaceAll(r'\u2191', '↑'); // Up arrow
+    text = text.replaceAll(r'\u2193', '↓'); // Down arrow
+
+    return text;
+  }
+
+  /// Remove all occurrences of backward oblique '\' that are used as escape characters
+  String _trimBackslashes(String text) {
+    // Remove backslashes before brackets
+    text = text.replaceAll(r'\[', '[');
+    text = text.replaceAll(r'\]', ']');
+    // Remove standalone backslashes that appear before symbols
+    // Use replaceAllMapped to properly substitute the captured group
+    text = text.replaceAllMapped(
+      RegExp(r'\\([^\s])'),
+      (match) => match.group(1) ?? '',
+    );
+    return text;
+  }
+
+  /// Handle HTML newlines and line breaks
+  String _handleNewlines(String text) {
+    // Convert <br> and <br/> to actual newlines
+    text = text.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    // Handle HTML paragraphs with line breaks
+    text = text.replaceAll(RegExp(r'</p>\s*<p>', caseSensitive: false), '\n\n');
+    return text;
+  }
+
+  /// Remove on-page scroll anchor links from headings
+  /// Example: ## Notes <a href="#notes" id="notes"></a> → ## Notes
+  String _removeHeadingAnchors(String text) {
+    // Remove anchor tags that are used for in-page navigation
+    text = text.replaceAll(
+      RegExp(r'\s*<a\s+[^>]*(?:href="#[^"]*"|id="[^"]*")[^>]*>\s*</a>\s*'),
+      '',
+    );
+    return text.trim();
+  }
+
+  /// Handle inline link embeds in text like <https://example.com>
+  /// Also handles standalone URLs that aren't wrapped
+  String _handleInlineLinkEmbeds(String text) {
+    // IMPORTANT: Don't convert URLs inside {% embed url="<...>" %} blocks
+    // because the embed parser handles those separately.
+    // Only convert standalone <https://...> that are NOT inside embed url="..."
+
+    // First, convert <https://...> format to markdown link format
+    // but only if NOT preceded by url=" (indicating an embed block)
+    text = text.replaceAllMapped(
+      RegExp(r'(?<!url=")(?<!url=")<(https?://[^>]+)>(?!")'),
+      (match) {
+        final url = match.group(1)!;
+        // Use URL as both display text and link
+        return '[$url]($url)';
+      },
+    );
+
+    // Also handle case where URL might have leading bracket from previous processing
+    // Pattern: [https://... without closing bracket properly formed
+    text = text.replaceAllMapped(RegExp(r'\[(https?://[^\]]+)\](?!\()'), (
+      match,
+    ) {
+      final url = match.group(1)!;
+      return '[$url]($url)';
+    });
+
+    return text;
+  }
+
   /// Decode HTML entities in a string
   String _decodeHtmlEntities(String text) {
     return text
@@ -40,6 +138,22 @@ class MarkdownParser {
     // Pre-process: decode HTML entities in the raw markdown
     markdown = _decodeHtmlEntities(markdown);
     _log('After HTML entity decode: ${markdown.length} chars');
+
+    // Pre-process: handle Unicode characters
+    markdown = _handleUnicodeCharacters(markdown);
+    _log('After Unicode handling: ${markdown.length} chars');
+
+    // Pre-process: trim backslashes
+    markdown = _trimBackslashes(markdown);
+    _log('After backslash trimming: ${markdown.length} chars');
+
+    // Pre-process: handle newlines
+    markdown = _handleNewlines(markdown);
+    _log('After newline handling: ${markdown.length} chars');
+
+    // Pre-process: handle inline link embeds
+    markdown = _handleInlineLinkEmbeds(markdown);
+    _log('After inline link embed handling: ${markdown.length} chars');
 
     final blocks = <ContentBlock>[];
     final lines = markdown.split('\n');
@@ -207,7 +321,7 @@ class MarkdownParser {
           continue;
         }
 
-        // Check for HTML buttons
+        // Check for HTML buttons (including inline button + text combinations)
         if (trimmedLine.contains('<a') &&
             trimmedLine.contains('class="button')) {
           _log('  -> Detected BUTTON at line $i');
@@ -215,6 +329,12 @@ class MarkdownParser {
           blocks.add(result.block);
           i = result.nextIndex;
           blockCount++;
+          // Check if there's additional text after the button on the same line
+          final remainingText = _extractTextAfterButton(trimmedLine);
+          if (remainingText.isNotEmpty) {
+            blocks.add(ParagraphBlock(text: remainingText));
+            blockCount++;
+          }
           _log('  -> BUTTON parsed, next line: $i');
           continue;
         }
@@ -228,7 +348,8 @@ class MarkdownParser {
           ).firstMatch(trimmedLine);
           if (headingMatch != null) {
             final level = headingMatch.group(1)!.length;
-            final text = headingMatch.group(2)!;
+            // Remove anchor links from heading text
+            final text = _removeHeadingAnchors(headingMatch.group(2)!);
             _log('  -> Detected HEADING level $level at line $i');
             blocks.add(HeadingBlock(level: level, text: text));
             i++;
@@ -271,7 +392,12 @@ class MarkdownParser {
         }
 
         // Task list (check before unordered list)
-        if (trimmedLine.startsWith('* [') || trimmedLine.startsWith('- [')) {
+        // Only match actual checkbox patterns: * [ ], * [x], * [X], - [ ], - [x], - [X]
+        // NOT markdown links like * [text](url) or * [**bold**](url)
+        final taskListMatch = RegExp(
+          r'^[\*\-]\s+\[[xX ]\]\s+',
+        ).hasMatch(trimmedLine);
+        if (taskListMatch) {
           _log('  -> Detected TASK LIST at line $i');
           final result = _parseTaskList(lines, i);
           blocks.add(result.block);
@@ -464,7 +590,20 @@ class MarkdownParser {
 
     // Extract URL from src attribute
     final srcMatch = RegExp(r'src="<?([^">]+)>?"').firstMatch(line);
-    final url = srcMatch?.group(1) ?? '';
+    var url = srcMatch?.group(1) ?? '';
+
+    // Sanitize URL - remove any markdown link formatting that may have been applied
+    final markdownLinkMatch = RegExp(
+      r'^\[([^\]]+)\]\([^\)]+\)$',
+    ).firstMatch(url);
+    if (markdownLinkMatch != null) {
+      url = markdownLinkMatch.group(1) ?? url;
+    }
+    // Also remove leading/trailing brackets and angle brackets
+    url = url
+        .replaceAll(RegExp(r'^[\[<]+'), '')
+        .replaceAll(RegExp(r'[\]>]+$'), '')
+        .trim();
 
     // Get caption from content between {% file %} and {% endfile %}
     String caption = '';
@@ -571,7 +710,21 @@ class MarkdownParser {
   _ParseResult _parseEmbed(List<String> lines, int start) {
     final line = lines[start].trim();
     final urlMatch = RegExp(r'url="<?([^">]+)>?"').firstMatch(line);
-    final url = urlMatch?.group(1) ?? '';
+    var url = urlMatch?.group(1) ?? '';
+
+    // Sanitize URL - remove any markdown link formatting that may have been applied
+    // e.g., [https://...](https://...) should become just https://...
+    final markdownLinkMatch = RegExp(
+      r'^\[([^\]]+)\]\([^\)]+\)$',
+    ).firstMatch(url);
+    if (markdownLinkMatch != null) {
+      url = markdownLinkMatch.group(1) ?? url;
+    }
+    // Also remove leading/trailing brackets and angle brackets
+    url = url
+        .replaceAll(RegExp(r'^[\[<]+'), '')
+        .replaceAll(RegExp(r'[\]>]+$'), '')
+        .trim();
 
     // Check if the line also ends with %} - single line embed
     // Single line embeds: {% embed url="..." %}
@@ -742,19 +895,22 @@ class MarkdownParser {
     final contentLines = <String>[];
     String summary = '';
     int i = start + 1;
+    bool summaryFound = false;
 
     while (i < lines.length) {
-      final line = lines[i].trim();
+      final line = lines[i];
+      final trimmedLine = line.trim();
 
-      if (line.contains('</details>')) {
+      if (trimmedLine.contains('</details>')) {
         break;
       }
 
       // Extract summary
-      if (line.contains('<summary>')) {
+      if (trimmedLine.contains('<summary>')) {
         final summaryMatch = RegExp(
           r'<summary>(.+?)</summary>',
-        ).firstMatch(line);
+          dotAll: true,
+        ).firstMatch(trimmedLine);
         if (summaryMatch != null) {
           summary = summaryMatch.group(1) ?? '';
         } else {
@@ -765,23 +921,106 @@ class MarkdownParser {
             i++;
           }
         }
+        // Process summary to convert links and clean up HTML entities
+        summary = _processSummaryText(summary);
+        summaryFound = true;
         i++;
         continue;
       }
 
-      if (line.isNotEmpty) {
-        contentLines.add(lines[i]);
+      // Only add content after summary is found
+      if (summaryFound) {
+        // Preserve ALL lines including empty ones (for paragraph separation)
+        // Don't trim here - preserve original formatting
+        contentLines.add(line);
       }
       i++;
     }
 
+    // Process content to handle HTML lists and cleanup
+    String content = contentLines.join('\n');
+    content = _processExpandableContent(content);
+
     return _ParseResult(
-      block: ExpandableBlock(
-        summary: summary,
-        content: contentLines.join('\n').trim(),
-      ),
+      block: ExpandableBlock(summary: summary, content: content),
       nextIndex: i + 1,
     );
+  }
+
+  /// Process expandable content to convert HTML lists to markdown format
+  /// and clean up the content while preserving newlines
+  String _processExpandableContent(String content) {
+    // Convert HTML list items with links to markdown format
+    content = content.replaceAllMapped(
+      RegExp(
+        r'<li>([^<]*)<a\s+href="([^"]+)"[^>]*>([^<]+)</a>([^<]*)</li>',
+        dotAll: true,
+      ),
+      (match) {
+        final prefix = match.group(1)?.trim() ?? '';
+        final url = match.group(2) ?? '';
+        final text = match.group(3) ?? '';
+        final suffix = match.group(4)?.trim() ?? '';
+        return '* $prefix[$text]($url)$suffix\n';
+      },
+    );
+    // Convert simple HTML list items
+    content = content.replaceAllMapped(
+      RegExp(r'<li>([^<]+)</li>', dotAll: true),
+      (match) => '* ${match.group(1)?.trim() ?? ""}\n',
+    );
+    // Remove ul tags but preserve structure
+    content = content.replaceAll(RegExp(r'<ul>\s*'), '\n');
+    content = content.replaceAll(RegExp(r'\s*</ul>'), '\n');
+
+    // Handle nested ul/li with indentation
+    content = content.replaceAllMapped(
+      RegExp(r'\s*<ul>\s*<li>', dotAll: true),
+      (match) => '\n  * ',
+    );
+
+    // Clean up multiple consecutive newlines but keep paragraph breaks
+    // (max 2 consecutive newlines)
+    content = content.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    // Process each line: preserve indentation for list items, trim others
+    final lines = content.split('\n');
+    final processedLines = <String>[];
+    for (final line in lines) {
+      // Check if this is a list item (with or without indentation)
+      if (RegExp(r'^\s*[\*\-\+]\s+').hasMatch(line)) {
+        // Preserve the line as-is to maintain indentation
+        processedLines.add(line);
+      } else {
+        // For non-list items, trim whitespace
+        processedLines.add(line.trim());
+      }
+    }
+    content = processedLines.join('\n');
+
+    // Final cleanup - remove leading/trailing empty lines
+    content = content.trim();
+
+    return content;
+  }
+
+  /// Process summary text to convert HTML links to markdown format
+  String _processSummaryText(String summary) {
+    // Convert HTML links to markdown format: <a href="url">text</a> -> [text](url)
+    summary = summary.replaceAllMapped(
+      RegExp(r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>', dotAll: true),
+      (match) {
+        final url = match.group(1) ?? '';
+        final text = match.group(2) ?? '';
+        return '[$text]($url)';
+      },
+    );
+    // Decode common HTML entities
+    summary = summary
+        .replaceAll('&#x26;', '&')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&#x20;', ' ');
+    return summary.trim();
   }
 
   /// Parse HTML image/figure
@@ -924,11 +1163,23 @@ class MarkdownParser {
           String? url;
           String? imageUrl;
 
-          // Extract link
+          // Extract link href
           final linkMatch = RegExp(
             r'<a[^>]*href="([^"]+)"',
           ).firstMatch(rowHtml);
           url = linkMatch?.group(1);
+
+          // Handle edge case: if title is empty or only contains the link tag,
+          // extract the link text and use it as title (uppercase for subject codes)
+          if (title.isEmpty || title.contains('<a ')) {
+            // Extract link text content (between > and </a>)
+            final linkTextMatch = RegExp(
+              r'<a[^>]*>([^<]+)</a>',
+            ).firstMatch(rowHtml);
+            if (linkTextMatch != null) {
+              title = linkTextMatch.group(1)?.toUpperCase() ?? '';
+            }
+          }
 
           // Extract image
           final imgMatch = RegExp(
@@ -998,11 +1249,22 @@ class MarkdownParser {
         break;
       }
 
-      final cells = line
-          .substring(1, line.length - 1)
-          .split('|')
-          .map((cell) => _decodeHtmlEntities(cell.trim()))
-          .toList();
+      final cells = line.substring(1, line.length - 1).split('|').map((cell) {
+        var processedCell = _decodeHtmlEntities(cell.trim());
+        // Handle HTML <br> tags in markdown table cells
+        processedCell = processedCell.replaceAll(
+          RegExp(r'<br\s*/?>', caseSensitive: false),
+          '\n',
+        );
+        // Handle HTML <p> tags in markdown table cells
+        processedCell = processedCell.replaceAllMapped(
+          RegExp(r'<p[^>]*>(.*?)</p>', caseSensitive: false, dotAll: true),
+          (match) => '${match.group(1) ?? ''}\n',
+        );
+        // Clean up multiple consecutive newlines
+        processedCell = processedCell.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+        return processedCell.trim();
+      }).toList();
 
       if (cells.isNotEmpty) {
         rows.add(cells);
@@ -1033,6 +1295,27 @@ class MarkdownParser {
       block: ButtonBlock(text: text, url: url, style: style),
       nextIndex: start + 1,
     );
+  }
+
+  /// Extract text that comes after an inline button on the same line
+  String _extractTextAfterButton(String line) {
+    // Match button tag and capture everything after it
+    final buttonEndMatch = RegExp(r'</a>\s*(.+)$').firstMatch(line);
+    if (buttonEndMatch != null) {
+      final afterButton = buttonEndMatch.group(1)?.trim() ?? '';
+      // Check if it's a markdown link
+      final linkMatch = RegExp(
+        r'\[([^\]]+)\]\(([^)]+)\)',
+      ).firstMatch(afterButton);
+      if (linkMatch != null) {
+        return afterButton;
+      }
+      // Return plain text if not empty
+      if (afterButton.isNotEmpty && !afterButton.startsWith('<')) {
+        return afterButton;
+      }
+    }
+    return '';
   }
 
   /// Parse standard markdown code block
@@ -1112,7 +1395,16 @@ class MarkdownParser {
       }
 
       // Check for task list item - break and let task list parser handle
-      if (trimmed.startsWith('* [') || trimmed.startsWith('- [')) {
+      // Only if it's specifically a checkbox format: * [ ] or * [x]
+      // Not if it starts with a link like * [Link text](url)
+      final isCheckbox =
+          (trimmed.startsWith('* [ ]') ||
+          trimmed.startsWith('* [x]') ||
+          trimmed.startsWith('* [X]') ||
+          trimmed.startsWith('- [ ]') ||
+          trimmed.startsWith('- [x]') ||
+          trimmed.startsWith('- [X]'));
+      if (isCheckbox) {
         break;
       }
 
@@ -1123,8 +1415,23 @@ class MarkdownParser {
       // Extract text (remove bullet point)
       final bulletMatch = RegExp(r'^[\*\-\+]\s+(.+)$').firstMatch(trimmed);
       if (bulletMatch != null) {
-        final text = bulletMatch.group(1) ?? trimmed;
+        String text = bulletMatch.group(1) ?? trimmed;
+        // Handle embedded links in list items
+        text = _handleInlineLinkEmbeds(text);
         items.add(ListItemData(text: text, level: level));
+      } else if (line.startsWith('  ') || line.startsWith('\t')) {
+        // Handle continuation lines (indented text that's part of previous item)
+        if (items.isNotEmpty) {
+          // Check if this is a nested list item
+          final nestedBulletMatch = RegExp(
+            r'^\s*[\*\-\+]\s+(.+)$',
+          ).firstMatch(line);
+          if (nestedBulletMatch != null) {
+            String text = nestedBulletMatch.group(1) ?? '';
+            text = _handleInlineLinkEmbeds(text);
+            items.add(ListItemData(text: text, level: level));
+          }
+        }
       }
       i++;
     }
@@ -1191,15 +1498,14 @@ class MarkdownParser {
         continue;
       }
 
-      // Check if still a task list item
-      if (!trimmed.startsWith('* [') &&
-          !trimmed.startsWith('- [') &&
-          !line.startsWith('  ') &&
-          !line.startsWith('\t')) {
+      // Check if still a task list item - must be actual checkbox pattern
+      // Pattern: * [ ], * [x], * [X], - [ ], - [x], - [X]
+      final isTaskItem = RegExp(r'^[\*\-]\s+\[[xX ]\]\s+').hasMatch(trimmed);
+      if (!isTaskItem && !line.startsWith('  ') && !line.startsWith('\t')) {
         break;
       }
 
-      if (trimmed.startsWith('* [') || trimmed.startsWith('- [')) {
+      if (isTaskItem) {
         // Check checkbox state
         final isChecked = trimmed.contains('[x]') || trimmed.contains('[X]');
 
@@ -1318,6 +1624,39 @@ class MarkdownParser {
       return buttonMatch.group(0) ?? '';
     }
 
+    // Check for HTML lists with links (ul/li with anchors)
+    if (cellContent.contains('<ul>') || cellContent.contains('<li>')) {
+      // Process list items with links
+      cellContent = cellContent.replaceAllMapped(
+        RegExp(
+          r'<li>([^<]*)<a\s+href="([^"]+)"[^>]*>([^<]+)</a>([^<]*)</li>',
+          dotAll: true,
+        ),
+        (match) {
+          final prefix = match.group(1)?.trim() ?? '';
+          final url = match.group(2) ?? '';
+          final text = match.group(3) ?? '';
+          final suffix = match.group(4)?.trim() ?? '';
+          return '$prefix<a href="$url">$text</a>$suffix\n';
+        },
+      );
+      // Remove ul/li tags but preserve line breaks
+      cellContent = cellContent.replaceAll(RegExp(r'</?ul>'), '');
+      cellContent = cellContent.replaceAll(RegExp(r'</?li>'), '');
+    }
+
+    // Handle <br> tags for newlines
+    cellContent = cellContent.replaceAll(
+      RegExp(r'<br\s*/?>', caseSensitive: false),
+      '\n',
+    );
+
+    // Handle <p> tags
+    cellContent = cellContent.replaceAll(
+      RegExp(r'</?p>', caseSensitive: false),
+      '\n',
+    );
+
     // Check for regular anchor links (preserve them too)
     final linkMatch = RegExp(
       r'<a[^>]*href="[^"]*"[^>]*>[^<]+</a>',
@@ -1325,12 +1664,27 @@ class MarkdownParser {
     ).firstMatch(cellContent);
 
     if (linkMatch != null) {
-      // Return the anchor HTML preserved for link handling
+      // If cell has multiple links, preserve them all
+      final allLinks = RegExp(
+        r'<a[^>]*href="([^"]+)"[^>]*>([^<]+)</a>',
+        dotAll: true,
+      ).allMatches(cellContent);
+
+      if (allLinks.length > 1) {
+        // Multiple links - format as list
+        final linkList = allLinks
+            .map((m) {
+              return '<a href="${m.group(1)}">${m.group(2)}</a>';
+            })
+            .join('\n');
+        return linkList;
+      }
+      // Single link - return the anchor HTML preserved
       return linkMatch.group(0) ?? '';
     }
 
     // Strip all other HTML tags
-    return _stripHtmlTags(cellContent);
+    return _stripHtmlTags(cellContent).trim();
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/route_constants.dart';
 import '../../widgets/common/animated_gradient_border.dart';
 import '../../../core/services/connectivity_service.dart';
 import 'edit_profile_dialog.dart';
@@ -88,10 +89,9 @@ class _GuestProfileView extends StatelessWidget {
     );
   }
 
-  /// Trigger Google Sign In directly
-  void _signInWithGoogle(BuildContext context) async {
-    final authProvider = context.read<AuthProvider>();
-    await authProvider.signInWithGoogle();
+  /// Navigate to welcome screen for authentication
+  void _signInWithGoogle(BuildContext context) {
+    context.go(RouteConstants.welcome);
   }
 
   Widget _buildSettingsSection(BuildContext context) {
@@ -273,8 +273,9 @@ class _AuthenticatedProfileView extends StatelessWidget {
               onTap: () async {
                 // Check internet connectivity first
                 final connectivityService = ConnectivityService();
-                final isConnected = await connectivityService.checkConnectivity();
-                
+                final isConnected = await connectivityService
+                    .checkConnectivity();
+
                 if (!isConnected) {
                   Navigator.of(dialogContext).pop();
                   if (context.mounted) {
@@ -284,7 +285,9 @@ class _AuthenticatedProfileView extends StatelessWidget {
                         return SurfaceCard(
                           child: Basic(
                             title: const Text('No Internet Connection'),
-                            content: const Text('Please connect to the internet to sign out.'),
+                            content: const Text(
+                              'Please connect to the internet to sign out.',
+                            ),
                             leading: Icon(
                               Icons.wifi_off_rounded,
                               color: Theme.of(context).colorScheme.destructive,
@@ -301,7 +304,7 @@ class _AuthenticatedProfileView extends StatelessWidget {
                   }
                   return;
                 }
-                
+
                 Navigator.of(dialogContext).pop();
                 await authProvider.signOut();
               },

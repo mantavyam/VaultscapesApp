@@ -89,12 +89,11 @@ class AppRouter {
       final hasCompletedProfileSetup =
           onboardingProvider.hasCompletedProfileSetup;
 
-      // If user has completed onboarding and is on welcome page, redirect to home
-      if (hasCompletedOnboarding && isOnWelcomePage) {
+      // If user has completed onboarding, is authenticated, and is on welcome page, redirect to home
+      // But allow unauthenticated users to access welcome page for sign-in
+      if (hasCompletedOnboarding && isOnWelcomePage && isAuthenticated) {
         // For authenticated users who haven't completed profile setup, redirect to profile setup
-        if (isAuthenticated &&
-            !hasCompletedProfileSetup &&
-            !onboardingProvider.isReturningUser) {
+        if (!hasCompletedProfileSetup && !onboardingProvider.isReturningUser) {
           return RouteConstants.profileSetup;
         }
         return RouteConstants.home;
@@ -187,6 +186,7 @@ class AppRouter {
               final title = state.uri.queryParameters['title'] ?? 'Content';
               final gitbookUrl = state.uri.queryParameters['url'] ?? '';
               final subtitle = state.uri.queryParameters['subtitle'];
+              final semesterId = state.uri.queryParameters['semesterId'];
               return _buildPageWithSlideTransition(
                 context,
                 state,
@@ -194,6 +194,7 @@ class AppRouter {
                   title: title,
                   gitbookUrl: gitbookUrl,
                   subtitle: subtitle,
+                  semesterId: semesterId,
                 ),
               );
             },

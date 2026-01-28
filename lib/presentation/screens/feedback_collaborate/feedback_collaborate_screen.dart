@@ -1,8 +1,10 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import '../../providers/auth_provider.dart';
 import '../../providers/swipe_disable_notifier.dart';
+import '../../../core/constants/route_constants.dart';
 import 'feedback_form_tab.dart';
 import 'collaborate_form_tab.dart';
 import 'submission_success_screen.dart';
@@ -224,9 +226,8 @@ class _FeedbackCollaborateScreenState extends State<FeedbackCollaborateScreen> {
                 height: FormDimensions.buttonHeight,
                 child: PrimaryButton(
                   onPressed: () {
-                    // Trigger auth flow directly
-                    final authProvider = context.read<AuthProvider>();
-                    authProvider.signInWithGoogle();
+                    // Navigate to welcome screen for authentication
+                    context.go(RouteConstants.welcome);
                   },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,

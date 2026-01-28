@@ -79,7 +79,7 @@ class WelcomeScreen extends StatelessWidget {
         const SizedBox(height: 12),
         // Tagline
         Text(
-          'Your Academic Resource Hub',
+          'Stay Ahead of the Curve',
           style: TextStyle(
             fontSize: 16,
             color: theme.colorScheme.mutedForeground,
@@ -89,7 +89,7 @@ class WelcomeScreen extends StatelessWidget {
         const SizedBox(height: 20),
         // Description
         Text(
-          'Access semester-wise academic materials, notes, assignments, and previous year questions — all in one place.',
+          'Access Semester-Wise Academic Materials, Notes, Assignments, PYQs of UG BTECH + Signals and Breakthroughs in Latest AI Technological Developments — All in One Place.',
           style: TextStyle(
             fontSize: 14,
             color: theme.colorScheme.mutedForeground,

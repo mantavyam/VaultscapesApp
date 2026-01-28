@@ -21,12 +21,16 @@ dependencies:
 
   # WebView
   webview_flutter: ^4.10.0
+  
+  # PDF Viewing (native rendering with gestures)
+  pdfx: ^2.9.2
 
   # Local Storage & Caching
   shared_preferences: ^2.3.3
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.4
+  flutter_cache_manager: ^3.4.1
 
   # File Handling
   file_picker: ^8.1.4

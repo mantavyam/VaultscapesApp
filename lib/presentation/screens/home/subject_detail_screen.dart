@@ -53,6 +53,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   SubjectInfo? _previousSubject;
   SubjectInfo? _nextSubject;
 
+  // Flag for navigation to overview page (when on first subject)
+  bool _canNavigateToOverview = false;
+
   // For tracking swipe gesture
   double _horizontalDragStart = 0;
   double _verticalDragStart = 0;
@@ -165,8 +168,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           _nextSubject = currentIndex < subjects.length - 1
               ? subjects[currentIndex + 1]
               : null;
+
+          // If on first subject and semester has overview, allow swipe to overview
+          _canNavigateToOverview =
+              currentIndex == 0 && _semester!.overviewGitbookUrl != null;
+
           _log('Previous subject: ${_previousSubject?.code ?? "none"}');
           _log('Next subject: ${_nextSubject?.code ?? "none"}');
+          _log('Can navigate to overview: $_canNavigateToOverview');
         }
       }
     }
@@ -266,14 +275,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   Future<void> _retryLoadContent() async {
     if (_subject?.gitbookUrl == null) return;
     _log('Retrying content load for: ${_subject!.gitbookUrl}');
-    
+
     // Reset error state and reload
     setState(() {
       _errorMessage = null;
       _errorType = null;
       _isLoading = true;
     });
-    
+
     // Clear cache and reload fresh
     await _contentService.clearCacheFor(_subject!.gitbookUrl!);
     await _loadContent(_subject!.gitbookUrl!);
@@ -282,6 +291,54 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   void _navigateToSubject(SubjectInfo subject) {
     _closeSidebar();
     context.go(RouteConstants.subjectPath(widget.semesterId, subject.code));
+  }
+
+  /// Navigate to a subject by its code (for internal card links)
+  void _navigateToSubjectByCode(String subjectCode) {
+    if (_semester == null) return;
+
+    // Find the subject in the semester by code (case-insensitive)
+    final allSubjects = [
+      ..._semester!.coreSubjects,
+      ..._semester!.specializationSubjects,
+    ];
+
+    final subject = allSubjects.firstWhere(
+      (s) => s.code.toLowerCase() == subjectCode.toLowerCase(),
+      orElse: () => allSubjects.first, // Fallback, shouldn't happen
+    );
+
+    _navigateToSubject(subject);
+  }
+
+  /// Get all known subject codes from the current semester for internal navigation
+  Set<String> _getKnownSubjectCodes() {
+    if (_semester == null) return {};
+
+    final codes = <String>{};
+    for (final subject in _semester!.coreSubjects) {
+      codes.add(subject.code.toUpperCase());
+    }
+    for (final subject in _semester!.specializationSubjects) {
+      codes.add(subject.code.toUpperCase());
+    }
+    return codes;
+  }
+
+  void _navigateToOverview() {
+    if (_semester == null || _semester!.overviewGitbookUrl == null) return;
+    _closeSidebar();
+
+    final encodedUrl = Uri.encodeComponent(_semester!.overviewGitbookUrl!);
+    final title = Uri.encodeComponent(
+      _semester!.overviewName ?? '${_semester!.name} Overview',
+    );
+    final subtitle = Uri.encodeComponent('Semester ${_semester!.id}');
+    final semesterId = _semester!.id.toString();
+
+    context.push(
+      '/main/home/content?title=$title&url=$encodedUrl&subtitle=$subtitle&semesterId=$semesterId',
+    );
   }
 
   void _toggleSidebar() {
@@ -356,9 +413,13 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         if (horizontalDelta < -500 && _nextSubject != null) {
           _navigateToSubject(_nextSubject!);
         }
-        // Swipe left to right - go to previous subject
-        else if (horizontalDelta > 500 && _previousSubject != null) {
-          _navigateToSubject(_previousSubject!);
+        // Swipe left to right - go to previous subject or overview
+        else if (horizontalDelta > 500) {
+          if (_previousSubject != null) {
+            _navigateToSubject(_previousSubject!);
+          } else if (_canNavigateToOverview && _semester != null) {
+            _navigateToOverview();
+          }
         }
         _isHorizontalSwipe = false;
       },
@@ -383,8 +444,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                       icon: Icon(
                         _isRefreshing ? RadixIcons.reload : RadixIcons.reload,
                       ),
-                      onPressed: _isRefreshing 
-                          ? null 
+                      onPressed: _isRefreshing
+                          ? null
                           : () {
                               if (_errorMessage != null) {
                                 // If there's an error, retry loading
@@ -710,6 +771,12 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
+                // Overview Section (at the top)
+                if (_semester!.overviewGitbookUrl != null) ...[
+                  _buildSidebarSectionHeader(theme, 'Overview'),
+                  _buildOverviewSidebarItem(theme),
+                  const SizedBox(height: 16),
+                ],
                 // Core Subjects Section
                 if (coreSubjects.isNotEmpty) ...[
                   _buildSidebarSectionHeader(theme, 'Core Subjects'),
@@ -724,8 +791,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
               ],
             ),
           ),
-          // Swipe navigation hint at bottom
-          _buildNavigationHint(theme),
         ],
       ),
     );
@@ -755,6 +820,59 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build overview item for sidebar navigation
+  Widget _buildOverviewSidebarItem(ThemeData theme) {
+    return GestureDetector(
+      onTap: () => _navigateToOverview(),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.menu_book_outlined,
+              size: 18,
+              color: theme.colorScheme.mutedForeground,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _semester!.overviewName ?? 'Semester Overview',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      color: theme.colorScheme.foreground,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Syllabus, resources & info',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.mutedForeground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: theme.colorScheme.mutedForeground,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -796,9 +914,6 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     bool isParentSelected,
     bool isExpanded,
   ) {
-    // Check if any child is selected
-    final isChildSelected = children.any((c) => c.code == widget.subjectId);
-
     return Column(
       children: [
         // Parent item (clickable to expand/collapse)
@@ -813,30 +928,28 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             });
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: isParentSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.15)
                   : Colors.transparent,
-              border: Border(
-                left: BorderSide(
-                  color: isParentSelected || isChildSelected
-                      ? theme.colorScheme.primary
-                      : Colors.transparent,
-                  width: 3,
-                ),
-              ),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                // Expand/collapse icon
-                Icon(
-                  isExpanded ? RadixIcons.chevronDown : RadixIcons.chevronRight,
-                  size: 14,
-                  color: theme.colorScheme.mutedForeground,
+                // Animated expand/collapse icon
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 200),
+                  turns: isExpanded ? 0.25 : 0,
+                  child: Icon(
+                    RadixIcons.chevronRight,
+                    size: 14,
+                    color: theme.colorScheme.mutedForeground,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                // Subject code
+                // Subject name first, then code below
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -846,24 +959,24 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          parent.code.toUpperCase(),
+                          parent.name,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: isParentSelected
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                             color: isParentSelected
                                 ? theme.colorScheme.primary
                                 : theme.colorScheme.foreground,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          parent.name,
+                          parent.code.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             color: theme.colorScheme.mutedForeground,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -877,7 +990,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.muted,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${children.length}',
@@ -898,46 +1011,58 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             return GestureDetector(
               onTap: () => _navigateToSubject(child),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+                margin: const EdgeInsets.only(
+                  left: 24,
+                  right: 12,
+                  top: 2,
+                  bottom: 2,
                 ),
-                margin: const EdgeInsets.only(left: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isChildItemSelected
-                      ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                      ? theme.colorScheme.primary.withValues(alpha: 0.15)
                       : Colors.transparent,
-                  border: Border(
-                    left: BorderSide(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      RadixIcons.file,
+                      size: 12,
                       color: isChildItemSelected
                           ? theme.colorScheme.primary
-                          : theme.colorScheme.border,
-                      width: isChildItemSelected ? 3 : 1,
+                          : theme.colorScheme.mutedForeground,
                     ),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      child.code.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isChildItemSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isChildItemSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.foreground,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            child.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isChildItemSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isChildItemSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.foreground,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            child.code.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    Text(
-                      child.name,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.mutedForeground,
-                      ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -956,19 +1081,13 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     return GestureDetector(
       onTap: () => _navigateToSubject(subject),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.1)
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
               : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : Colors.transparent,
-              width: 3,
-            ),
-          ),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
@@ -978,100 +1097,30 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    subject.code.toUpperCase(),
+                    subject.name,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w600,
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: isSelected
                           ? theme.colorScheme.primary
                           : theme.colorScheme.foreground,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    subject.name,
+                    subject.code.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: theme.colorScheme.mutedForeground,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavigationHint(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.muted.withValues(alpha: 0.3),
-        border: Border(top: BorderSide(color: theme.colorScheme.border)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                RadixIcons.arrowLeft,
-                size: 14,
-                color: theme.colorScheme.mutedForeground,
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                RadixIcons.arrowRight,
-                size: 14,
-                color: theme.colorScheme.mutedForeground,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Swipe to switch subjects',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: theme.colorScheme.mutedForeground,
-                ),
-              ),
-            ],
-          ),
-          if (_previousSubject != null || _nextSubject != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (_previousSubject != null)
-                  Expanded(
-                    child: Text(
-                      '← ${_previousSubject!.code}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.mutedForeground,
-                      ),
-                    ),
-                  )
-                else
-                  const Spacer(),
-                if (_nextSubject != null)
-                  Expanded(
-                    child: Text(
-                      '${_nextSubject!.code} →',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.mutedForeground,
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                  )
-                else
-                  const Spacer(),
-              ],
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -1121,10 +1170,16 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             }
             return false;
           },
-          child: MarkdownContentRenderer(blocks: _contentBlocks),
+          child: MarkdownContentRenderer(
+            blocks: _contentBlocks,
+            knownSubjectCodes: _getKnownSubjectCodes(),
+            onNavigateToSubject: _navigateToSubjectByCode,
+          ),
         ),
         // Animated Previous/Next Subject Navigation Cards
-        if (_previousSubject != null || _nextSubject != null)
+        if (_previousSubject != null ||
+            _nextSubject != null ||
+            _canNavigateToOverview)
           _buildAnimatedPrevNextNavigation(theme),
       ],
     );
@@ -1155,7 +1210,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         ),
         child: Row(
           children: [
-            // Previous subject card
+            // Previous subject card OR Overview card (when on first subject)
             if (_previousSubject != null)
               Expanded(
                 child: GestureDetector(
@@ -1188,6 +1243,53 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                               ),
                               Text(
                                 _previousSubject!.code.toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else if (_canNavigateToOverview)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _navigateToOverview(),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.muted.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.chevron_left,
+                          color: theme.colorScheme.mutedForeground,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Back to',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.mutedForeground,
+                                ),
+                              ),
+                              Text(
+                                'Overview',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,

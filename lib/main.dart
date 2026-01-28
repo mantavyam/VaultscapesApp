@@ -19,16 +19,8 @@ void main() async {
     overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
   );
 
-  // Set status bar style for both light and dark modes
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Color(0x00000000), // Transparent
-      statusBarIconBrightness: Brightness.dark, // Dark icons for light theme
-      statusBarBrightness: Brightness.light, // Light status bar for iOS
-      systemNavigationBarColor: Color(0x00000000), // Transparent
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
+  // NOTE: Status bar style is now set dynamically in app.dart based on theme
+  // to ensure correct icon brightness for both light and dark modes
 
   // Initialize Firebase
   await Firebase.initializeApp();
@@ -39,7 +31,7 @@ void main() async {
   // Initialize services
   final storageService = LocalStorageService.instance;
   await storageService.init();
-  
+
   // Initialize connectivity service
   final connectivityService = ConnectivityService();
   // Start monitoring connectivity changes

@@ -13,7 +13,7 @@ class NavigationProvider extends ChangeNotifier {
   String? _errorMessage;
 
   NavigationProvider({NavigationRepository? navigationRepository})
-      : _navigationRepository = navigationRepository ?? NavigationRepository();
+    : _navigationRepository = navigationRepository ?? NavigationRepository();
 
   // Getters
   List<SemesterModel> get semesters => _semesters;
@@ -46,7 +46,9 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _selectedSemester = await _navigationRepository.getSemesterById(semesterId);
+      _selectedSemester = await _navigationRepository.getSemesterById(
+        semesterId,
+      );
       _selectedSubject = null; // Clear subject selection
     } catch (e) {
       _errorMessage = 'Failed to load semester: $e';
@@ -80,11 +82,19 @@ class NavigationProvider extends ChangeNotifier {
     return _semesters.where((s) => s.id == id).firstOrNull;
   }
 
-  /// Refresh semesters
+  /// Refresh semesters from remote
   Future<void> refresh() async {
-    _navigationRepository.clearCache();
-    _semesters = [];
-    await loadSemesters();
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _semesters = await _navigationRepository.refreshFromRemote();
+    } catch (e) {
+      _errorMessage = 'Failed to refresh semesters: $e';
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Clear error

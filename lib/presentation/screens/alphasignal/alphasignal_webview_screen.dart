@@ -4,8 +4,10 @@ import 'package:flutter/material.dart' show Color, Material, showGeneralDialog;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/constants/url_constants.dart';
+import '../../../core/constants/route_constants.dart';
 
 /// AlphaSignal WebView screen (Breakthrough) - requires authentication
 class AlphaSignalWebViewScreen extends StatefulWidget {
@@ -443,7 +445,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
 
   void _initWebView() {
     if (_isControllerInitialized) return; // Prevent re-initialization
-    
+
     _setRandomLoadingText();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -474,10 +476,10 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             if (_isAlphaSignalEmailPage(url)) {
               debugPrint('WebView: Running hide elements JS');
               await _controller!.runJavaScript(_hideEmailElementsJs);
-              
+
               // Inject user's name and remove logo
               await _injectUserNameAndRemoveLogo();
-              
+
               // Apply dark mode if device theme is dark
               if (isDarkMode) {
                 debugPrint('WebView: Applying dark mode for email content');
@@ -503,13 +505,16 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
             });
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView onWebResourceError: ${error.description}, isForMainFrame: ${error.isForMainFrame}');
-            
+            debugPrint(
+              'WebView onWebResourceError: ${error.description}, isForMainFrame: ${error.isForMainFrame}',
+            );
+
             // Only show error for main frame failures, ignore subresource errors
             if (error.isForMainFrame == true && mounted) {
               setState(() {
                 _hasError = true;
-                _isContentReady = false; // Ensure loading overlay shows while error state renders
+                _isContentReady =
+                    false; // Ensure loading overlay shows while error state renders
               });
             }
             // Ignore subresource errors (images, scripts, etc.) - they don't affect page usability
@@ -517,7 +522,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(UrlConstants.alphaSignalUrl));
-    
+
     _isControllerInitialized = true;
     if (mounted) setState(() {});
   }
@@ -528,8 +533,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       final authProvider = context.read<AuthProvider>();
       final userName = authProvider.user?.displayName ?? 'Reader';
       final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-      
-      final injectionJs = '''
+
+      final injectionJs =
+          '''
         (function() {
           // Remove AlphaSignal logo
           var logos = document.querySelectorAll('img[alt="AlphaSignal Logo"]');
@@ -584,9 +590,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
           return 'injection complete';
         })();
       ''';
-      
+
       await _controller?.runJavaScript(injectionJs);
-      
+
       // Retry after delays to catch dynamically loaded content
       // Also reapply dark mode if needed
       Future.delayed(const Duration(milliseconds: 500), () async {
@@ -699,13 +705,10 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         // Slide up from bottom animation
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          )),
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: child,
         );
       },
@@ -804,11 +807,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
   /// Build authentication barrier widget
   Widget _buildAuthBarrier(BuildContext context, ThemeData theme) {
     return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('Latest in AI'),
-        ),
-      ],
+      headers: [AppBar(title: const Text('Latest in AI'))],
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -865,10 +864,9 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
     );
   }
 
-  /// Show authentication prompt
+  /// Show authentication prompt - navigates to welcome screen
   void _showAuthPrompt(BuildContext context) {
-    final authProvider = context.read<AuthProvider>();
-    authProvider.signInWithGoogle();
+    context.go(RouteConstants.welcome);
   }
 
   Widget _buildWebView() {
@@ -965,10 +963,7 @@ class _AlphaSignalWebViewScreenState extends State<AlphaSignalWebViewScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            OutlineButton(
-              onPressed: _refresh,
-              child: const Text('Retry'),
-            ),
+            OutlineButton(onPressed: _refresh, child: const Text('Retry')),
           ],
         ),
       ),
@@ -1267,15 +1262,20 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
           },
           onPageFinished: (String url) async {
             // Get theme before async operations to avoid context warning
-            final isLightMode = Theme.of(context).brightness == Brightness.light;
-            
-            await _archiveController.runJavaScript(_ArchiveDialogState._hideArchiveElementsJs);
-            
+            final isLightMode =
+                Theme.of(context).brightness == Brightness.light;
+
+            await _archiveController.runJavaScript(
+              _ArchiveDialogState._hideArchiveElementsJs,
+            );
+
             // Apply light mode if app is in light theme
             if (isLightMode) {
-              await _archiveController.runJavaScript(_ArchiveDialogState._lightModeArchiveJs);
+              await _archiveController.runJavaScript(
+                _ArchiveDialogState._lightModeArchiveJs,
+              );
             }
-            
+
             await _archiveController.runJavaScript(_linkInterceptorJs);
             await Future.delayed(const Duration(milliseconds: 300));
 
@@ -1286,8 +1286,10 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
             }
           },
           onWebResourceError: (WebResourceError error) {
-            debugPrint('Archive WebView error: ${error.description}, isForMainFrame: ${error.isForMainFrame}');
-            
+            debugPrint(
+              'Archive WebView error: ${error.description}, isForMainFrame: ${error.isForMainFrame}',
+            );
+
             // Only show error for main frame failures
             if (error.isForMainFrame == true && mounted) {
               setState(() {
@@ -1360,7 +1362,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
               GestureDetector(
                 onVerticalDragEnd: (details) {
                   // Close dialog if dragged down with sufficient velocity
-                  if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+                  if (details.primaryVelocity != null &&
+                      details.primaryVelocity! > 300) {
                     Navigator.of(context).pop();
                   }
                 },
@@ -1390,7 +1393,9 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                         // WebView with full sizing
                         if (!_hasNetworkError)
                           SizedBox.expand(
-                            child: WebViewWidget(controller: _archiveController),
+                            child: WebViewWidget(
+                              controller: _archiveController,
+                            ),
                           ),
                         // Network error state
                         if (_hasNetworkError)
@@ -1419,7 +1424,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                                     Text(
                                       'Unable to load archive. Please check your internet connection.',
                                       style: TextStyle(
-                                        color: theme.colorScheme.mutedForeground,
+                                        color:
+                                            theme.colorScheme.mutedForeground,
                                         fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
@@ -1432,7 +1438,9 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                                           _isLoading = true;
                                           _loadingProgress = 0;
                                         });
-                                        _archiveController.loadRequest(Uri.parse(_archiveUrl));
+                                        _archiveController.loadRequest(
+                                          Uri.parse(_archiveUrl),
+                                        );
                                       },
                                       child: const Text('Retry'),
                                     ),
@@ -1462,7 +1470,8 @@ class _ArchiveDialogState extends State<_ArchiveDialog> {
                                     Text(
                                       _archiveLoadingText,
                                       style: TextStyle(
-                                        color: theme.colorScheme.mutedForeground,
+                                        color:
+                                            theme.colorScheme.mutedForeground,
                                         fontSize: 14,
                                       ),
                                       textAlign: TextAlign.center,
