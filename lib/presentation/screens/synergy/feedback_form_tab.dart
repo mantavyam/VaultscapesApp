@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/feedback_provider.dart';
 import '../../../data/models/feedback_model.dart';
 import '../../../core/services/connectivity_service.dart';
+import '../../../core/responsive/responsive.dart';
 import 'synergy_screen.dart';
 import 'submission_loading_overlay.dart';
 
@@ -59,35 +60,41 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Consumer<FeedbackProvider>(
-      builder: (context, feedbackProvider, child) {
-        return GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: Stack(
-            children: [
-              // Main Form Content
-              SingleChildScrollView(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: FormDimensions.maxFormWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(FormSpacing.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ═══════════════════════════════════════════
-                          // FORM HEADER
-                          // ═══════════════════════════════════════════
-                          _buildFormHeader(theme),
-                          const SizedBox(height: FormSpacing.xxxl),
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        // Responsive form constraints
+        final maxFormWidth = FormDimensions.getMaxFormWidth(windowSize);
+        final formPadding = FormSpacing.responsive(FormSpacing.lg, windowSize);
+        
+        return Consumer<FeedbackProvider>(
+          builder: (context, feedbackProvider, child) {
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Stack(
+                children: [
+                  // Main Form Content
+                  SingleChildScrollView(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: maxFormWidth,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(formPadding),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ═══════════════════════════════════════════
+                              // FORM HEADER
+                              // ═══════════════════════════════════════════
+                              _buildFormHeader(theme),
+                              const SizedBox(height: FormSpacing.xxxl),
 
-                          // ═══════════════════════════════════════════
-                          // SECTION 1: IDENTITY
-                          // ═══════════════════════════════════════════
-                          _buildSectionHeader(
-                            theme: theme,
+                              // ═══════════════════════════════════════════
+                              // SECTION 1: IDENTITY
+                              // ═══════════════════════════════════════════
+                              _buildSectionHeader(
+                                theme: theme,
                             icon: Icons.person_outline_rounded,
                             title: 'Your Identity',
                             subtitle: 'Tell us who you are',
@@ -258,6 +265,8 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
               ),
             ],
           ),
+        );
+          },
         );
       },
     );
@@ -1347,6 +1356,7 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
     }
 
     // Rate limit check
+    if (!mounted) return;
     final provider = context.read<FeedbackProvider>();
     final canSubmit = await provider.canSubmitFeedback();
     if (!canSubmit) {
@@ -1362,6 +1372,8 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
     await Future.delayed(
       const Duration(milliseconds: 400),
     ); // Increased from 50ms
+    
+    if (!mounted) return;
 
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -1386,6 +1398,7 @@ class _FeedbackFormTabState extends State<FeedbackFormTab> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     // === FINAL UNFOCUS + LONGER DELAY BEFORE SUBMISSION ===
     FocusManager.instance.primaryFocus?.unfocus();

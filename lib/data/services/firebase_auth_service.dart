@@ -1,18 +1,23 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../../core/error/exceptions.dart';
+import 'github_oauth_service.dart';
 
 /// Service for Firebase Authentication
 class FirebaseAuthService {
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
+  final GitHubOAuthService _githubOAuth;
 
   FirebaseAuthService({
     FirebaseAuth? firebaseAuth,
     GoogleSignIn? googleSignIn,
+    GitHubOAuthService? githubOAuth,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        _googleSignIn = googleSignIn ?? GoogleSignIn(),
+        _githubOAuth = githubOAuth ?? GitHubOAuthService();
 
   /// Get current Firebase user
   User? get currentUser => _firebaseAuth.currentUser;
@@ -55,6 +60,63 @@ class FirebaseAuthService {
     } catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Sign in failed: $e');
+    }
+  }
+
+  /// Sign in with GitHub using manual OAuth2 flow
+  /// This avoids the "missing initial state" error by using native OAuth
+  /// instead of web-based redirect that relies on browser sessionStorage
+  Future<UserModel> signInWithGithub() async {
+    try {
+      // Step 1: Get GitHub access token via manual OAuth2 flow
+      final accessToken = await _githubOAuth.authorizeAndGetToken();
+
+      // Step 2: Create Firebase credential with the access token
+      final credential = GithubAuthProvider.credential(accessToken);
+
+      // Step 3: Sign in to Firebase with the credential
+      final UserCredential userCredential =
+          await _firebaseAuth.signInWithCredential(credential);
+
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        throw AuthException('Failed to get user after GitHub sign in');
+      }
+
+      return _mapFirebaseUserToModel(firebaseUser);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during GitHub sign in: ${e.code} - ${e.message}');
+      
+      // Handle account-exists-with-different-credential error
+      if (e.code == 'account-exists-with-different-credential') {
+        final email = e.email;
+        if (email != null) {
+          // Get the sign-in methods for this email
+          final methods = await _firebaseAuth.fetchSignInMethodsForEmail(email);
+          debugPrint('Existing sign-in methods for $email: $methods');
+          
+          if (methods.contains('google.com')) {
+            throw AuthException(
+              'This email is already registered with Google. '
+              'Please sign in with Google instead, or use a different GitHub account.'
+            );
+          } else if (methods.isNotEmpty) {
+            throw AuthException(
+              'This email is already registered with ${methods.first}. '
+              'Please use that sign-in method instead.'
+            );
+          }
+        }
+        throw AuthException(
+          'This email is already registered with a different sign-in method. '
+          'Please use your original sign-in method.'
+        );
+      }
+      
+      throw AuthException('Firebase auth error: ${e.message}');
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException('GitHub sign in failed: $e');
     }
   }
 
@@ -111,6 +173,7 @@ class FirebaseAuthService {
     if (user.providerData.isNotEmpty) {
       final providerId = user.providerData.first.providerId;
       if (providerId.contains('google')) return 'google';
+      if (providerId.contains('github')) return 'github';
       if (providerId.contains('apple')) return 'apple';
       return providerId;
     }

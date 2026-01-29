@@ -10,7 +10,7 @@ import '../../../data/services/markdown_parser.dart';
 import '../../widgets/content/markdown_content_renderer.dart';
 import '../../widgets/content/content_loading_skeleton.dart';
 import '../../../core/constants/route_constants.dart';
-import '../synergy/synergy_screen.dart';
+import '../../../core/responsive/responsive.dart';
 
 /// Subject detail screen with:
 /// - Breadcrumb navigation with horizontal scroll: UG/BTECH/CSE-IT/SEM-X/SUBCODE
@@ -387,109 +387,122 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
       );
     }
 
-    return GestureDetector(
-      // Track horizontal swipe for subject navigation
-      onHorizontalDragStart: (details) {
-        _horizontalDragStart = details.globalPosition.dx;
-        _verticalDragStart = details.globalPosition.dy;
-        _isHorizontalSwipe = false;
-      },
-      onHorizontalDragUpdate: (details) {
-        final horizontalDelta =
-            (details.globalPosition.dx - _horizontalDragStart).abs();
-        final verticalDelta = (details.globalPosition.dy - _verticalDragStart)
-            .abs();
-        // Only consider it a horizontal swipe if horizontal movement is 2x vertical
-        if (horizontalDelta > 50 && horizontalDelta > verticalDelta * 2) {
-          _isHorizontalSwipe = true;
-        }
-      },
-      onHorizontalDragEnd: (details) {
-        if (!_isHorizontalSwipe) return;
-        if (details.primaryVelocity == null) return;
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        return GestureDetector(
+          // Track horizontal swipe for subject navigation
+          onHorizontalDragStart: (details) {
+            _horizontalDragStart = details.globalPosition.dx;
+            _verticalDragStart = details.globalPosition.dy;
+            _isHorizontalSwipe = false;
+          },
+          onHorizontalDragUpdate: (details) {
+            final horizontalDelta =
+                (details.globalPosition.dx - _horizontalDragStart).abs();
+            final verticalDelta = (details.globalPosition.dy - _verticalDragStart)
+                .abs();
+            // Only consider it a horizontal swipe if horizontal movement is 2x vertical
+            if (horizontalDelta > 50 && horizontalDelta > verticalDelta * 2) {
+              _isHorizontalSwipe = true;
+            }
+          },
+          onHorizontalDragEnd: (details) {
+            if (!_isHorizontalSwipe) return;
+            if (details.primaryVelocity == null) return;
 
-        final horizontalDelta = details.primaryVelocity!;
-        // Swipe right to left - go to next subject
-        if (horizontalDelta < -500 && _nextSubject != null) {
-          _navigateToSubject(_nextSubject!);
-        }
-        // Swipe left to right - go to previous subject or overview
-        else if (horizontalDelta > 500) {
-          if (_previousSubject != null) {
-            _navigateToSubject(_previousSubject!);
-          } else if (_canNavigateToOverview && _semester != null) {
-            _navigateToOverview();
-          }
-        }
-        _isHorizontalSwipe = false;
-      },
-      child: Stack(
-        children: [
-          // Main content
-          Scaffold(
-            headers: [
-              AppBar(
-                leading: [
-                  IconButton.ghost(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.pop(),
-                  ),
-                ],
-                // Breadcrumb title with horizontal scroll
-                title: _buildBreadcrumb(theme),
-                trailing: [
-                  // Refresh button in appbar
-                  if (!_isLoading)
-                    IconButton.ghost(
-                      icon: Icon(
-                        _isRefreshing ? RadixIcons.reload : RadixIcons.reload,
+            final horizontalDelta = details.primaryVelocity!;
+            // Swipe right to left - go to next subject
+            if (horizontalDelta < -500 && _nextSubject != null) {
+              _navigateToSubject(_nextSubject!);
+            }
+            // Swipe left to right - go to previous subject or overview
+            else if (horizontalDelta > 500) {
+              if (_previousSubject != null) {
+                _navigateToSubject(_previousSubject!);
+              } else if (_canNavigateToOverview && _semester != null) {
+                _navigateToOverview();
+              }
+            }
+            _isHorizontalSwipe = false;
+          },
+          child: Stack(
+            children: [
+              // Main content
+              Scaffold(
+                headers: [
+                  AppBar(
+                    leading: [
+                      IconButton.ghost(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.pop(),
                       ),
-                      onPressed: _isRefreshing
-                          ? null
-                          : () {
-                              if (_errorMessage != null) {
-                                // If there's an error, retry loading
-                                _retryLoadContent();
-                              } else {
-                                // Otherwise, refresh content
-                                _refreshContent();
-                              }
-                            },
-                    ),
-                  // Hierarchical sidebar toggle button
-                  IconButton.ghost(
-                    icon: Icon(
-                      _isSidebarOpen
-                          ? RadixIcons.cross1
-                          : RadixIcons.hamburgerMenu,
-                    ),
-                    onPressed: _toggleSidebar,
+                    ],
+                    // Breadcrumb title with horizontal scroll
+                    title: _buildBreadcrumb(theme, windowSize),
+                    trailing: [
+                      // Refresh button in appbar
+                      if (!_isLoading)
+                        IconButton.ghost(
+                          icon: Icon(
+                            _isRefreshing ? RadixIcons.reload : RadixIcons.reload,
+                          ),
+                          onPressed: _isRefreshing
+                              ? null
+                              : () {
+                                  if (_errorMessage != null) {
+                                    // If there's an error, retry loading
+                                    _retryLoadContent();
+                                  } else {
+                                    // Otherwise, refresh content
+                                    _refreshContent();
+                                  }
+                                },
+                        ),
+                      // Hierarchical sidebar toggle button
+                      IconButton.ghost(
+                        icon: Icon(
+                          _isSidebarOpen
+                              ? RadixIcons.cross1
+                              : RadixIcons.hamburgerMenu,
+                        ),
+                        onPressed: _toggleSidebar,
+                      ),
+                    ],
                   ),
                 ],
+                child: Column(
+                  children: [
+                    // Subject header with code and cache indicator
+                    if (_subject != null) _buildSubjectHeader(theme, windowSize),
+                    // Content area with scroll controller
+                    Expanded(child: _buildContent(theme, windowSize)),
+                  ],
+                ),
               ),
+              // Animated sidebar overlay
+              if (_isSidebarOpen ||
+                  _sidebarAnimationController.status == AnimationStatus.reverse)
+                _buildAnimatedSidebar(theme, windowSize),
+              // Loading overlay (on top of everything including skeleton)
+              if (_isLoading || _isRefreshing) _buildLoadingOverlay(theme, windowSize),
             ],
-            child: Column(
-              children: [
-                // Subject header with code and cache indicator
-                if (_subject != null) _buildSubjectHeader(theme),
-                // Content area with scroll controller
-                Expanded(child: _buildContent(theme)),
-              ],
-            ),
           ),
-          // Animated sidebar overlay
-          if (_isSidebarOpen ||
-              _sidebarAnimationController.status == AnimationStatus.reverse)
-            _buildAnimatedSidebar(theme),
-          // Loading overlay (on top of everything including skeleton)
-          if (_isLoading || _isRefreshing) _buildLoadingOverlay(theme),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildLoadingOverlay(ThemeData theme) {
+  Widget _buildLoadingOverlay(ThemeData theme, WindowSize windowSize) {
     const accentColor = Color(0xFF0EA5E9);
+    
+    // Responsive sizing
+    final maxWidth = windowSize.isMicro ? 280.0 : 340.0;
+    final iconContainerSize = windowSize.isMicro ? 64.0 : 80.0;
+    final iconSize = windowSize.isMicro ? 32.0 : 40.0;
+    final titleFontSize = windowSize.isMicro ? 16.0 : 20.0;
+    final subtitleFontSize = windowSize.isMicro ? 12.0 : 14.0;
+    final progressWidth = windowSize.isMicro ? 160.0 : 200.0;
+    final spacing = windowSize.isMicro ? 16.0 : 24.0;
 
     return AnimatedOpacity(
       opacity: _isLoading || _isRefreshing ? 1.0 : 0.0,
@@ -499,51 +512,53 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340),
+              constraints: BoxConstraints(maxWidth: maxWidth),
               child: Padding(
-                padding: const EdgeInsets.all(FormSpacing.xl),
+                padding: EdgeInsets.all(spacing),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: iconContainerSize,
+                      height: iconContainerSize,
                       decoration: BoxDecoration(
                         color: accentColor.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.article_outlined,
-                          size: 40,
+                          size: iconSize,
                           color: accentColor,
                         ),
                       ),
                     ),
-                    const SizedBox(height: FormSpacing.xl),
+                    SizedBox(height: spacing),
                     Text(
                       _isRefreshing
                           ? 'Refreshing content...'
                           : 'Loading content...',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: titleFontSize,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.foreground,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: FormSpacing.sm),
+                    SizedBox(height: windowSize.isMicro ? 6 : 8),
                     Text(
-                      'Please wait while we fetch the content.',
+                      windowSize.isMicro 
+                          ? 'Please wait...'
+                          : 'Please wait while we fetch the content.',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: subtitleFontSize,
                         color: theme.colorScheme.mutedForeground,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: FormSpacing.xl),
+                    SizedBox(height: spacing),
                     SizedBox(
-                      width: 200,
+                      width: progressWidth,
                       child: LinearProgressIndicator(
                         backgroundColor: theme.colorScheme.muted.withValues(
                           alpha: 0.3,
@@ -561,17 +576,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   }
 
   /// Build breadcrumb with horizontal scroll: UG / BTECH / CSE-IT / SEM-X / SUBCODE
-  Widget _buildBreadcrumb(ThemeData theme) {
+  Widget _buildBreadcrumb(ThemeData theme, WindowSize windowSize) {
     if (_subject == null || _semester == null) {
       return const Text('Loading...');
     }
 
-    final items = [
-      'BTECH',
-      'CSE-IT',
-      'SEM${widget.semesterId}',
-      _subject!.code.toUpperCase(),
-    ];
+    // Responsive breadcrumb - show less items in micro mode
+    final items = windowSize.isMicro 
+        ? ['SEM${widget.semesterId}', _subject!.code.toUpperCase()]
+        : ['BTECH', 'CSE-IT', 'SEM${widget.semesterId}', _subject!.code.toUpperCase()];
+    
+    final fontSize = windowSize.isMicro ? 11.0 : 12.0;
+    final separatorPadding = windowSize.isMicro ? 3.0 : 4.0;
 
     // Horizontally scrollable breadcrumb - swipe to reveal hidden text
     return SingleChildScrollView(
@@ -582,12 +598,12 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           for (int i = 0; i < items.length; i++) ...[
             if (i > 0)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: EdgeInsets.symmetric(horizontal: separatorPadding),
                 child: Text(
                   '/',
                   style: TextStyle(
                     color: theme.colorScheme.mutedForeground,
-                    fontSize: 12,
+                    fontSize: fontSize,
                   ),
                 ),
               ),
@@ -600,7 +616,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 fontWeight: i == items.length - 1
                     ? FontWeight.w600
                     : FontWeight.normal,
-                fontSize: 12,
+                fontSize: fontSize,
               ),
             ),
           ],
@@ -609,10 +625,20 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     );
   }
 
-  Widget _buildSubjectHeader(ThemeData theme) {
+  Widget _buildSubjectHeader(ThemeData theme, WindowSize windowSize) {
+    // Responsive sizing
+    final horizontalPadding = windowSize.isMicro ? 12.0 : 16.0;
+    final verticalPadding = windowSize.isMicro ? 8.0 : 12.0;
+    final titleFontSize = windowSize.isMicro ? 14.0 : 16.0;
+    final codeFontSize = windowSize.isMicro ? 10.0 : 12.0;
+    final cacheBadgePaddingH = windowSize.isMicro ? 6.0 : 8.0;
+    final cacheBadgePaddingV = windowSize.isMicro ? 3.0 : 4.0;
+    final cacheIconSize = windowSize.isMicro ? 10.0 : 12.0;
+    final cacheFontSize = windowSize.isMicro ? 9.0 : 11.0;
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       decoration: BoxDecoration(
         color: theme.colorScheme.muted.withValues(alpha: 0.3),
         border: Border(bottom: BorderSide(color: theme.colorScheme.border)),
@@ -628,16 +654,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   style: TextStyle(
                     color: theme.colorScheme.foreground,
                     fontWeight: FontWeight.w600,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                   ),
+                  maxLines: windowSize.isMicro ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: windowSize.isMicro ? 1 : 2),
                 Text(
                   _subject!.code.toUpperCase(),
                   style: TextStyle(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w500,
-                    fontSize: 12,
+                    fontSize: codeFontSize,
                   ),
                 ),
               ],
@@ -645,7 +673,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           ),
           if (_isFromCache)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: cacheBadgePaddingH, vertical: cacheBadgePaddingV),
               decoration: BoxDecoration(
                 color: theme.colorScheme.secondary,
                 borderRadius: BorderRadius.circular(4),
@@ -655,14 +683,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 children: [
                   Icon(
                     RadixIcons.clock,
-                    size: 12,
+                    size: cacheIconSize,
                     color: theme.colorScheme.secondaryForeground,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: windowSize.isMicro ? 3 : 4),
                   Text(
                     'Cached',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: cacheFontSize,
                       color: theme.colorScheme.secondaryForeground,
                     ),
                   ),
@@ -675,7 +703,10 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   }
 
   /// Build animated sidebar with slide and fade animation
-  Widget _buildAnimatedSidebar(ThemeData theme) {
+  Widget _buildAnimatedSidebar(ThemeData theme, WindowSize windowSize) {
+    // Responsive sidebar width
+    final sidebarWidth = ResponsiveLayout.getSidebarWidth(context);
+    
     return AnimatedBuilder(
       animation: _sidebarAnimationController,
       builder: (context, child) {
@@ -696,8 +727,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
               right: 0,
               bottom: 0,
               child: Transform.translate(
-                offset: Offset(280 * _sidebarSlideAnimation.value, 0),
-                child: _buildHierarchicalSidebar(theme),
+                offset: Offset(sidebarWidth * _sidebarSlideAnimation.value, 0),
+                child: _buildHierarchicalSidebar(theme, windowSize, sidebarWidth),
               ),
             ),
           ],
@@ -708,7 +739,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
 
   /// Build hierarchical sidebar with accordion for parent/child subjects
   /// Includes bifurcation between core and specialization subjects
-  Widget _buildHierarchicalSidebar(ThemeData theme) {
+  Widget _buildHierarchicalSidebar(ThemeData theme, WindowSize windowSize, double sidebarWidth) {
     if (_semester == null) {
       return const SizedBox.shrink();
     }
@@ -716,9 +747,16 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     final coreSubjects = _semester!.coreSubjects;
     final specSubjects = _semester!.specializationSubjects;
     final hierarchy = _semester!.subjectHierarchy;
+    
+    // Responsive sizing
+    final headerPadding = windowSize.isMicro ? 12.0 : 16.0;
+    final headerIconSize = windowSize.isMicro ? 16.0 : 18.0;
+    final headerFontSize = windowSize.isMicro ? 12.0 : 14.0;
+    final listVerticalPadding = windowSize.isMicro ? 6.0 : 8.0;
+    final sectionSpacing = windowSize.isMicro ? 12.0 : 16.0;
 
     return Container(
-      width: 280,
+      width: sidebarWidth,
       decoration: BoxDecoration(
         color: theme.colorScheme.background,
         border: Border(left: BorderSide(color: theme.colorScheme.border)),
@@ -735,7 +773,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         children: [
           // Sidebar header
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(headerPadding),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: theme.colorScheme.border),
@@ -745,18 +783,19 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
               children: [
                 Icon(
                   RadixIcons.file,
-                  size: 18,
+                  size: headerIconSize,
                   color: theme.colorScheme.foreground,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: windowSize.isMicro ? 8 : 12),
                 Expanded(
                   child: Text(
-                    'Subjects - ${_semester!.name}',
+                    windowSize.isMicro ? _semester!.name : 'Subjects - ${_semester!.name}',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: headerFontSize,
                       color: theme.colorScheme.foreground,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton.ghost(
@@ -769,24 +808,24 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           // Subject list with sections
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(vertical: listVerticalPadding),
               children: [
                 // Overview Section (at the top)
                 if (_semester!.overviewGitbookUrl != null) ...[
-                  _buildSidebarSectionHeader(theme, 'Overview'),
-                  _buildOverviewSidebarItem(theme),
-                  const SizedBox(height: 16),
+                  _buildSidebarSectionHeader(theme, 'Overview', windowSize),
+                  _buildOverviewSidebarItem(theme, windowSize),
+                  SizedBox(height: sectionSpacing),
                 ],
                 // Core Subjects Section
                 if (coreSubjects.isNotEmpty) ...[
-                  _buildSidebarSectionHeader(theme, 'Core Subjects'),
-                  ..._buildSubjectList(theme, coreSubjects, hierarchy),
-                  const SizedBox(height: 16),
+                  _buildSidebarSectionHeader(theme, 'Core Subjects', windowSize),
+                  ..._buildSubjectList(theme, coreSubjects, hierarchy, windowSize),
+                  SizedBox(height: sectionSpacing),
                 ],
                 // Specialization Subjects Section
                 if (specSubjects.isNotEmpty) ...[
-                  _buildSidebarSectionHeader(theme, 'Specialization'),
-                  ..._buildSubjectList(theme, specSubjects, hierarchy),
+                  _buildSidebarSectionHeader(theme, windowSize.isMicro ? 'Spec' : 'Specialization', windowSize),
+                  ..._buildSubjectList(theme, specSubjects, hierarchy, windowSize),
                 ],
               ],
             ),
@@ -796,24 +835,29 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     );
   }
 
-  Widget _buildSidebarSectionHeader(ThemeData theme, String title) {
+  Widget _buildSidebarSectionHeader(ThemeData theme, String title, WindowSize windowSize) {
+    final horizontalPadding = windowSize.isMicro ? 12.0 : 16.0;
+    final verticalPadding = windowSize.isMicro ? 6.0 : 8.0;
+    final indicatorHeight = windowSize.isMicro ? 12.0 : 14.0;
+    final fontSize = windowSize.isMicro ? 9.0 : 10.0;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       child: Row(
         children: [
           Container(
             width: 3,
-            height: 14,
+            height: indicatorHeight,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: windowSize.isMicro ? 6 : 8),
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              fontSize: 10,
+              fontSize: fontSize,
               fontWeight: FontWeight.w700,
               color: theme.colorScheme.mutedForeground,
               letterSpacing: 1,
@@ -825,12 +869,20 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
   }
 
   /// Build overview item for sidebar navigation
-  Widget _buildOverviewSidebarItem(ThemeData theme) {
+  Widget _buildOverviewSidebarItem(ThemeData theme, WindowSize windowSize) {
+    final horizontalMargin = windowSize.isMicro ? 8.0 : 12.0;
+    final horizontalPadding = windowSize.isMicro ? 8.0 : 12.0;
+    final verticalPadding = windowSize.isMicro ? 8.0 : 10.0;
+    final iconSize = windowSize.isMicro ? 16.0 : 18.0;
+    final titleFontSize = windowSize.isMicro ? 11.0 : 13.0;
+    final subtitleFontSize = windowSize.isMicro ? 9.0 : 11.0;
+    final chevronSize = windowSize.isMicro ? 14.0 : 16.0;
+    
     return GestureDetector(
       onTap: () => _navigateToOverview(),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -839,10 +891,10 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
           children: [
             Icon(
               Icons.menu_book_outlined,
-              size: 18,
+              size: iconSize,
               color: theme.colorScheme.mutedForeground,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: windowSize.isMicro ? 8 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -851,15 +903,15 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                     _semester!.overviewName ?? 'Semester Overview',
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
-                      fontSize: 13,
+                      fontSize: titleFontSize,
                       color: theme.colorScheme.foreground,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'Syllabus, resources & info',
+                    windowSize.isMicro ? 'Syllabus & info' : 'Syllabus, resources & info',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: subtitleFontSize,
                       color: theme.colorScheme.mutedForeground,
                     ),
                   ),
@@ -868,7 +920,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             ),
             Icon(
               Icons.chevron_right,
-              size: 16,
+              size: chevronSize,
               color: theme.colorScheme.mutedForeground,
             ),
           ],
@@ -881,6 +933,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     ThemeData theme,
     List<SubjectInfo> subjects,
     Map<SubjectInfo, List<SubjectInfo>> hierarchy,
+    WindowSize windowSize,
   ) {
     final widgets = <Widget>[];
 
@@ -895,11 +948,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
       if (hasChildren && isTopLevel) {
         // Parent subject with accordion
         widgets.add(
-          _buildAccordionItem(theme, subject, children, isSelected, isExpanded),
+          _buildAccordionItem(theme, subject, children, isSelected, isExpanded, windowSize),
         );
       } else if (isTopLevel) {
         // Single subject without children
-        widgets.add(_buildSingleSubjectItem(theme, subject, isSelected));
+        widgets.add(_buildSingleSubjectItem(theme, subject, isSelected, windowSize));
       }
       // Skip children as they're handled by their parent's accordion
     }
@@ -913,7 +966,23 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     List<SubjectInfo> children,
     bool isParentSelected,
     bool isExpanded,
+    WindowSize windowSize,
   ) {
+    // Responsive sizing
+    final horizontalMargin = windowSize.isMicro ? 8.0 : 12.0;
+    final horizontalPadding = windowSize.isMicro ? 8.0 : 12.0;
+    final verticalPadding = windowSize.isMicro ? 8.0 : 10.0;
+    final chevronSize = windowSize.isMicro ? 12.0 : 14.0;
+    final nameFontSize = windowSize.isMicro ? 11.0 : 13.0;
+    final codeFontSize = windowSize.isMicro ? 9.0 : 10.0;
+    final badgePaddingH = windowSize.isMicro ? 4.0 : 6.0;
+    final badgeFontSize = windowSize.isMicro ? 9.0 : 10.0;
+    final childLeftMargin = windowSize.isMicro ? 18.0 : 24.0;
+    final childVerticalPadding = windowSize.isMicro ? 6.0 : 8.0;
+    final childIconSize = windowSize.isMicro ? 10.0 : 12.0;
+    final childNameFontSize = windowSize.isMicro ? 10.0 : 12.0;
+    final childCodeFontSize = windowSize.isMicro ? 8.0 : 9.0;
+    
     return Column(
       children: [
         // Parent item (clickable to expand/collapse)
@@ -928,8 +997,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             });
           },
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 2),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
             decoration: BoxDecoration(
               color: isParentSelected
                   ? theme.colorScheme.primary.withValues(alpha: 0.15)
@@ -944,11 +1013,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   turns: isExpanded ? 0.25 : 0,
                   child: Icon(
                     RadixIcons.chevronRight,
-                    size: 14,
+                    size: chevronSize,
                     color: theme.colorScheme.mutedForeground,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: windowSize.isMicro ? 6 : 8),
                 // Subject name first, then code below
                 Expanded(
                   child: GestureDetector(
@@ -961,7 +1030,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                         Text(
                           parent.name,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: nameFontSize,
                             fontWeight: isParentSelected
                                 ? FontWeight.w600
                                 : FontWeight.w500,
@@ -974,7 +1043,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                         Text(
                           parent.code.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: codeFontSize,
                             color: theme.colorScheme.mutedForeground,
                           ),
                         ),
@@ -984,8 +1053,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 ),
                 // Child count badge
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: badgePaddingH,
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
@@ -995,7 +1064,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   child: Text(
                     '${children.length}',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: badgeFontSize,
                       color: theme.colorScheme.mutedForeground,
                     ),
                   ),
@@ -1011,15 +1080,15 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
             return GestureDetector(
               onTap: () => _navigateToSubject(child),
               child: Container(
-                margin: const EdgeInsets.only(
-                  left: 24,
-                  right: 12,
+                margin: EdgeInsets.only(
+                  left: childLeftMargin,
+                  right: horizontalMargin,
                   top: 2,
                   bottom: 2,
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: childVerticalPadding,
                 ),
                 decoration: BoxDecoration(
                   color: isChildItemSelected
@@ -1031,12 +1100,12 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   children: [
                     Icon(
                       RadixIcons.file,
-                      size: 12,
+                      size: childIconSize,
                       color: isChildItemSelected
                           ? theme.colorScheme.primary
                           : theme.colorScheme.mutedForeground,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: windowSize.isMicro ? 6 : 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1044,7 +1113,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                           Text(
                             child.name,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: childNameFontSize,
                               fontWeight: isChildItemSelected
                                   ? FontWeight.w600
                                   : FontWeight.w400,
@@ -1057,7 +1126,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                           Text(
                             child.code.toUpperCase(),
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: childCodeFontSize,
                               color: theme.colorScheme.mutedForeground,
                             ),
                           ),
@@ -1077,12 +1146,20 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     ThemeData theme,
     SubjectInfo subject,
     bool isSelected,
+    WindowSize windowSize,
   ) {
+    final horizontalMargin = windowSize.isMicro ? 8.0 : 12.0;
+    final horizontalPadding = windowSize.isMicro ? 8.0 : 12.0;
+    final verticalPadding = windowSize.isMicro ? 8.0 : 10.0;
+    final indentWidth = windowSize.isMicro ? 16.0 : 22.0;
+    final nameFontSize = windowSize.isMicro ? 11.0 : 13.0;
+    final codeFontSize = windowSize.isMicro ? 9.0 : 10.0;
+    
     return GestureDetector(
       onTap: () => _navigateToSubject(subject),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: EdgeInsets.symmetric(horizontal: horizontalMargin, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
         decoration: BoxDecoration(
           color: isSelected
               ? theme.colorScheme.primary.withValues(alpha: 0.15)
@@ -1091,7 +1168,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         ),
         child: Row(
           children: [
-            const SizedBox(width: 22), // Indent to align with accordion items
+            SizedBox(width: indentWidth), // Indent to align with accordion items
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1099,7 +1176,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   Text(
                     subject.name,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: nameFontSize,
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w500,
@@ -1112,7 +1189,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                   Text(
                     subject.code.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: codeFontSize,
                       color: theme.colorScheme.mutedForeground,
                     ),
                   ),
@@ -1125,7 +1202,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
     );
   }
 
-  Widget _buildContent(ThemeData theme) {
+  Widget _buildContent(ThemeData theme, WindowSize windowSize) {
     if (_isLoading) {
       return const ContentLoadingSkeleton();
     }
@@ -1180,25 +1257,37 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
         if (_previousSubject != null ||
             _nextSubject != null ||
             _canNavigateToOverview)
-          _buildAnimatedPrevNextNavigation(theme),
+          _buildAnimatedPrevNextNavigation(theme, windowSize),
       ],
     );
   }
 
   /// Build animated previous/next subject navigation cards
   /// Hides when scrolling down, shows when scrolling up
-  Widget _buildAnimatedPrevNextNavigation(ThemeData theme) {
+  Widget _buildAnimatedPrevNextNavigation(ThemeData theme, WindowSize windowSize) {
+    // Responsive sizing
+    final horizontalMargin = windowSize.isMicro ? 12.0 : 16.0;
+    final bottomOffset = windowSize.isMicro ? 12.0 : 16.0;
+    final hiddenOffset = windowSize.isMicro ? -80.0 : -100.0;
+    final containerPadding = windowSize.isMicro ? 8.0 : 12.0;
+    final cardPadding = windowSize.isMicro ? 8.0 : 10.0;
+    final borderRadius = windowSize.isMicro ? 10.0 : 12.0;
+    final iconSize = windowSize.isMicro ? 18.0 : 20.0;
+    final labelFontSize = windowSize.isMicro ? 9.0 : 10.0;
+    final codeFontSize = windowSize.isMicro ? 11.0 : 13.0;
+    final gapWidth = windowSize.isMicro ? 8.0 : 12.0;
+    
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      left: 16,
-      right: 16,
-      bottom: _showNavigationCards ? 16 : -100,
+      left: horizontalMargin,
+      right: horizontalMargin,
+      bottom: _showNavigationCards ? bottomOffset : hiddenOffset,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(containerPadding),
         decoration: BoxDecoration(
           color: theme.colorScheme.card,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(color: theme.colorScheme.border),
           boxShadow: [
             BoxShadow(
@@ -1216,7 +1305,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 child: GestureDetector(
                   onTap: () => _navigateToSubject(_previousSubject!),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(cardPadding),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.muted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
@@ -1226,18 +1315,18 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                         Icon(
                           Icons.chevron_left,
                           color: theme.colorScheme.mutedForeground,
-                          size: 20,
+                          size: iconSize,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: windowSize.isMicro ? 4 : 6),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Previous',
+                                windowSize.isMicro ? 'Prev' : 'Previous',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: labelFontSize,
                                   color: theme.colorScheme.mutedForeground,
                                 ),
                               ),
@@ -1245,7 +1334,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                                 _previousSubject!.code.toUpperCase(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontSize: codeFontSize,
                                   color: theme.colorScheme.primary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -1263,7 +1352,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                 child: GestureDetector(
                   onTap: () => _navigateToOverview(),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(cardPadding),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.muted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
@@ -1273,9 +1362,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                         Icon(
                           Icons.chevron_left,
                           color: theme.colorScheme.mutedForeground,
-                          size: 20,
+                          size: iconSize,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: windowSize.isMicro ? 4 : 6),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1284,7 +1373,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                               Text(
                                 'Back to',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: labelFontSize,
                                   color: theme.colorScheme.mutedForeground,
                                 ),
                               ),
@@ -1292,7 +1381,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                                 'Overview',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontSize: codeFontSize,
                                   color: theme.colorScheme.primary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -1307,14 +1396,14 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
               )
             else
               const Spacer(),
-            const SizedBox(width: 12),
+            SizedBox(width: gapWidth),
             // Next subject card
             if (_nextSubject != null)
               Expanded(
                 child: GestureDetector(
                   onTap: () => _navigateToSubject(_nextSubject!),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(cardPadding),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.muted.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
@@ -1329,7 +1418,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                               Text(
                                 'Next',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: labelFontSize,
                                   color: theme.colorScheme.mutedForeground,
                                 ),
                               ),
@@ -1337,7 +1426,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                                 _nextSubject!.code.toUpperCase(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontSize: codeFontSize,
                                   color: theme.colorScheme.primary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
@@ -1345,11 +1434,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen>
                             ],
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: windowSize.isMicro ? 4 : 6),
                         Icon(
                           Icons.chevron_right,
                           color: theme.colorScheme.mutedForeground,
-                          size: 20,
+                          size: iconSize,
                         ),
                       ],
                     ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../../core/responsive/responsive.dart';
 
 /// Splash screen - neutral initial route that waits for auth and onboarding
 /// state restoration before routing to the correct destination.
@@ -133,52 +134,62 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      child: Container(
-        color: theme.colorScheme.background,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // App Logo/Icon
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Icon(
-                  Icons.auto_stories_rounded,
-                  size: 50,
-                  color: theme.colorScheme.primary,
-                ),
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        // Responsive sizing
+        final logoContainerSize = windowSize.isMicro ? 80.0 : 100.0;
+        final logoIconSize = windowSize.isMicro ? 40.0 : 50.0;
+        final titleFontSize = windowSize.isMicro ? 24.0 : 28.0;
+        final loadingSize = windowSize.isMicro ? 20.0 : 24.0;
+        
+        return Scaffold(
+          child: Container(
+            color: theme.colorScheme.background,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // App Logo/Icon
+                  Container(
+                    width: logoContainerSize,
+                    height: logoContainerSize,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(windowSize.isMicro ? 20 : 24),
+                    ),
+                    child: Icon(
+                      Icons.auto_stories_rounded,
+                      size: logoIconSize,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // App Name
+                  Text(
+                    'Vaultscapes',
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.foreground,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Loading indicator
+                  SizedBox(
+                    width: loadingSize,
+                    height: loadingSize,
+                    child: CircularProgressIndicator(
+                      strokeWidth: windowSize.isMicro ? 2.0 : 2.5,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              // App Name
-              Text(
-                'Vaultscapes',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.foreground,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Loading indicator
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -107,6 +107,9 @@ class SemesterModel {
     ...specializationSubjects,
   ];
 
+  /// Get total subject count
+  int get subjectCount => coreSubjects.length + specializationSubjects.length;
+
   /// Get parent-child relationship map for subjects
   /// Returns a map where key is parent subject and value is list of child subjects
   Map<SubjectInfo, List<SubjectInfo>> get subjectHierarchy {

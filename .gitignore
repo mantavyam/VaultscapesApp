@@ -12,6 +12,10 @@
 .swiftpm/
 migrate_working_dir/
 .gradle/
+
+
+# Environment variables - DO NOT COMMIT
+.env
 env.md
 
 # IntelliJ related

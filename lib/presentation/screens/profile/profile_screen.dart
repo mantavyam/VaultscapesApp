@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/route_constants.dart';
 import '../../widgets/common/animated_gradient_border.dart';
 import '../../../core/services/connectivity_service.dart';
+import '../../../core/responsive/responsive.dart';
 import 'edit_profile_dialog.dart';
 
 /// Profile screen with guest/authenticated views
@@ -16,12 +17,16 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        return Scaffold(
-          child: authProvider.isAuthenticated
-              ? _AuthenticatedProfileView(authProvider: authProvider)
-              : const _GuestProfileView(),
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        return Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            return Scaffold(
+              child: authProvider.isAuthenticated
+                  ? _AuthenticatedProfileView(authProvider: authProvider, windowSize: windowSize)
+                  : _GuestProfileView(windowSize: windowSize),
+            );
+          },
         );
       },
     );
@@ -30,39 +35,48 @@ class ProfileScreen extends StatelessWidget {
 
 /// Guest profile view
 class _GuestProfileView extends StatelessWidget {
-  const _GuestProfileView();
+  final WindowSize windowSize;
+  
+  const _GuestProfileView({required this.windowSize});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    // Responsive sizing
+    final padding = windowSize.isMicro ? 12.0 : 16.0;
+    final topSpacing = windowSize.isMicro ? 24.0 : 40.0;
+    final avatarSize = windowSize.isMicro ? 80.0 : 100.0;
+    final avatarIconSize = windowSize.isMicro ? 40.0 : 50.0;
+    final nameFontSize = windowSize.isMicro ? 20.0 : 24.0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: topSpacing),
           // Guest Avatar using RadixIcons.avatar
           Container(
-            width: 100,
-            height: 100,
+            width: avatarSize,
+            height: avatarSize,
             decoration: BoxDecoration(
               color: theme.colorScheme.muted,
               shape: BoxShape.circle,
             ),
             child: Icon(
               RadixIcons.avatar,
-              size: 50,
+              size: avatarIconSize,
               color: theme.colorScheme.mutedForeground,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Guest User',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: nameFontSize, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Sign in to unlock all features',
+            windowSize.isMicro ? 'Sign in to unlock features' : 'Sign in to unlock all features',
             style: TextStyle(color: theme.colorScheme.mutedForeground),
           ),
           const SizedBox(height: 24),
@@ -72,7 +86,7 @@ class _GuestProfileView extends StatelessWidget {
             onPressed: () => _signInWithGoogle(context),
             child: const Text('Sign In'),
           ),
-          const SizedBox(height: 40),
+          SizedBox(height: topSpacing),
 
           // Settings Section
           _buildSettingsSection(context),
@@ -95,57 +109,65 @@ class _GuestProfileView extends StatelessWidget {
   }
 
   Widget _buildSettingsSection(BuildContext context) {
-    return _SettingsSection();
+    return _SettingsSection(windowSize: windowSize);
   }
 
   Widget _buildQuickLinksSection(BuildContext context) {
-    return _QuickLinksSection();
+    return _QuickLinksSection(windowSize: windowSize);
   }
 
   Widget _buildAppInfoSection(BuildContext context) {
-    return _AppInfoSection();
+    return _AppInfoSection(windowSize: windowSize);
   }
 }
 
 /// Authenticated profile view
 class _AuthenticatedProfileView extends StatelessWidget {
   final AuthProvider authProvider;
+  final WindowSize windowSize;
 
-  const _AuthenticatedProfileView({required this.authProvider});
+  const _AuthenticatedProfileView({required this.authProvider, required this.windowSize});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = authProvider.user;
     final photoUrl = user?.photoUrl;
+    
+    // Responsive sizing
+    final padding = windowSize.isMicro ? 12.0 : 16.0;
+    final topSpacing = windowSize.isMicro ? 12.0 : 20.0;
+    final avatarSize = windowSize.isMicro ? 80.0 : 100.0;
+    final initialFontSize = windowSize.isMicro ? 32.0 : 40.0;
+    final nameFontSize = windowSize.isMicro ? 20.0 : 24.0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          SizedBox(height: topSpacing),
           // Profile Avatar with animated gradient border
           AnimatedGradientBorder(
-            size: 100,
+            size: avatarSize,
             borderWidth: 3,
             animationDuration: const Duration(seconds: 3),
             child: photoUrl != null && photoUrl.isNotEmpty
                 ? Image.network(
                     photoUrl,
-                    width: 100,
-                    height: 100,
+                    width: avatarSize,
+                    height: avatarSize,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: 100,
-                        height: 100,
+                        width: avatarSize,
+                        height: avatarSize,
                         color: theme.colorScheme.primary,
                         child: Center(
                           child: Text(
                             user?.displayName?.substring(0, 1).toUpperCase() ??
                                 'U',
-                            style: const TextStyle(
-                              fontSize: 40,
+                            style: TextStyle(
+                              fontSize: initialFontSize,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -155,14 +177,14 @@ class _AuthenticatedProfileView extends StatelessWidget {
                     },
                   )
                 : Container(
-                    width: 100,
-                    height: 100,
+                    width: avatarSize,
+                    height: avatarSize,
                     color: theme.colorScheme.primary,
                     child: Center(
                       child: Text(
                         user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-                        style: const TextStyle(
-                          fontSize: 40,
+                        style: TextStyle(
+                          fontSize: initialFontSize,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -176,16 +198,19 @@ class _AuthenticatedProfileView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                user?.displayName ?? 'User',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  user?.displayName ?? 'User',
+                  style: TextStyle(
+                    fontSize: nameFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.ghost(
-                icon: const Icon(Icons.edit, size: 20),
+                icon: Icon(Icons.edit, size: windowSize.isMicro ? 18 : 20),
                 onPressed: () => _showEditProfileDialog(context),
               ),
             ],
@@ -193,20 +218,24 @@ class _AuthenticatedProfileView extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             user?.email ?? '',
-            style: TextStyle(color: theme.colorScheme.mutedForeground),
+            style: TextStyle(
+              color: theme.colorScheme.mutedForeground,
+              fontSize: windowSize.isMicro ? 12.0 : 14.0,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 32),
 
           // Settings Section
-          _SettingsSection(),
+          _SettingsSection(windowSize: windowSize),
           const SizedBox(height: 24),
 
           // Quick Links Section
-          _QuickLinksSection(),
+          _QuickLinksSection(windowSize: windowSize),
           const SizedBox(height: 24),
 
           // App Info Section
-          _AppInfoSection(),
+          _AppInfoSection(windowSize: windowSize),
           const SizedBox(height: 24),
 
           // Logout Button - Outlined red style
@@ -215,9 +244,9 @@ class _AuthenticatedProfileView extends StatelessWidget {
             child: GestureDetector(
               onTap: () => _showLogoutConfirmation(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
+                padding: EdgeInsets.symmetric(
+                  vertical: windowSize.isMicro ? 10 : 12,
+                  horizontal: windowSize.isMicro ? 12 : 16,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.transparent,
@@ -227,16 +256,17 @@ class _AuthenticatedProfileView extends StatelessWidget {
                     width: 1.5,
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout, color: Color(0xFFDC2626), size: 20),
-                    SizedBox(width: 8),
+                    Icon(Icons.logout, color: const Color(0xFFDC2626), size: windowSize.isMicro ? 18 : 20),
+                    const SizedBox(width: 8),
                     Text(
                       'Sign Out',
                       style: TextStyle(
-                        color: Color(0xFFDC2626),
+                        color: const Color(0xFFDC2626),
                         fontWeight: FontWeight.w600,
+                        fontSize: windowSize.isMicro ? 13 : 14,
                       ),
                     ),
                   ],
@@ -277,7 +307,7 @@ class _AuthenticatedProfileView extends StatelessWidget {
                     .checkConnectivity();
 
                 if (!isConnected) {
-                  Navigator.of(dialogContext).pop();
+                  if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                   if (context.mounted) {
                     showToast(
                       context: context,
@@ -305,7 +335,7 @@ class _AuthenticatedProfileView extends StatelessWidget {
                   return;
                 }
 
-                Navigator.of(dialogContext).pop();
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
                 await authProvider.signOut();
               },
               child: Container(
@@ -335,59 +365,75 @@ class _AuthenticatedProfileView extends StatelessWidget {
 
 /// Settings section widget
 class _SettingsSection extends StatelessWidget {
+  final WindowSize windowSize;
+  
+  const _SettingsSection({required this.windowSize});
+  
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final theme = Theme.of(context);
+    
+    // Responsive sizing
+    final sectionPadding = windowSize.isMicro ? 12.0 : 16.0;
+    final titleFontSize = windowSize.isMicro ? 16.0 : 18.0;
+    final themePaddingH = windowSize.isMicro ? 12.0 : 16.0;
+    final themePaddingV = windowSize.isMicro ? 10.0 : 12.0;
 
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: EdgeInsets.all(sectionPadding),
             child: Text(
               'Management',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
             ),
           ),
           // Your Collaboration tile
           _SettingsListTile(
             icon: Icons.upload_file_outlined,
             title: 'Your Collaborations',
-            subtitle: 'View your submitted contributions',
+            subtitle: windowSize.isMicro ? 'View contributions' : 'View your submitted contributions',
             onTap: () => _navigateToCollaborationHistory(context),
+            windowSize: windowSize,
           ),
           // Your Feedback tile
           _SettingsListTile(
             icon: Icons.feedback_outlined,
             title: 'Your Feedback',
-            subtitle: 'View your submitted feedback',
+            subtitle: windowSize.isMicro ? 'View feedback' : 'View your submitted feedback',
             onTap: () => _navigateToFeedbackHistory(context),
+            windowSize: windowSize,
           ),
           // Inline Theme Selector
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: themePaddingH, vertical: themePaddingV),
             child: Row(
               children: [
                 Icon(
                   LucideIcons.cloudMoon,
                   color: theme.colorScheme.mutedForeground,
+                  size: windowSize.isMicro ? 20 : 24,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: windowSize.isMicro ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Theme',
-                        style: TextStyle(fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: windowSize.isMicro ? 13 : 14,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Set Preference',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: windowSize.isMicro ? 11 : 12,
                           color: theme.colorScheme.mutedForeground,
                         ),
                       ),
@@ -395,7 +441,7 @@ class _SettingsSection extends StatelessWidget {
                   ),
                 ),
                 // Segmented button for theme selection
-                _ThemeSegmentedButton(themeProvider: themeProvider),
+                _ThemeSegmentedButton(themeProvider: themeProvider, windowSize: windowSize),
               ],
             ),
           ),
@@ -416,8 +462,9 @@ class _SettingsSection extends StatelessWidget {
 /// Theme segmented button widget
 class _ThemeSegmentedButton extends StatelessWidget {
   final ThemeProvider themeProvider;
+  final WindowSize windowSize;
 
-  const _ThemeSegmentedButton({required this.themeProvider});
+  const _ThemeSegmentedButton({required this.themeProvider, required this.windowSize});
 
   @override
   Widget build(BuildContext context) {
@@ -513,23 +560,32 @@ class _ThemeOption extends StatelessWidget {
 
 /// Quick links section widget
 class _QuickLinksSection extends StatelessWidget {
+  final WindowSize windowSize;
+  
+  const _QuickLinksSection({required this.windowSize});
+  
   @override
   Widget build(BuildContext context) {
+    // Responsive sizing
+    final sectionPadding = windowSize.isMicro ? 12.0 : 16.0;
+    final titleFontSize = windowSize.isMicro ? 16.0 : 18.0;
+    
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: EdgeInsets.all(sectionPadding),
             child: Text(
               'Quick Links',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
             ),
           ),
           _SettingsListTile(
             icon: BootstrapIcons.discord,
             title: 'Join your friends',
             onTap: () => _launchUrl('https://discord.com/invite/AQ7PNzdCnC'),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: Icons.people_outline,
@@ -537,26 +593,30 @@ class _QuickLinksSection extends StatelessWidget {
             onTap: () => _launchUrl(
               'https://mantavyam.gitbook.io/vaultscapes/collaborators',
             ),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: Icons.help_outline,
-            title: 'How to use database?',
+            title: windowSize.isMicro ? 'How to use?' : 'How to use database?',
             onTap: () => _launchUrl(
               'https://mantavyam.gitbook.io/vaultscapes/how-to-use-database',
             ),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: Icons.handshake_outlined,
-            title: 'How to collaborate?',
+            title: windowSize.isMicro ? 'How to collaborate?' : 'How to collaborate?',
             onTap: () => _launchUrl(
               'https://mantavyam.gitbook.io/vaultscapes/how-to-collaborate',
             ),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: BootstrapIcons.github,
             title: 'Star Repo on Github',
             onTap: () =>
                 _launchUrl('https://github.com/mantavyam/vaultscapesDB'),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: BootstrapIcons.googlePlay,
@@ -581,16 +641,19 @@ class _QuickLinksSection extends StatelessWidget {
                 location: ToastLocation.bottomCenter,
               );
             },
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: Icons.description,
             title: 'Privacy Policy',
             onTap: () => context.push('/main/home/privacy-policy'),
+            windowSize: windowSize,
           ),
           _SettingsListTile(
             icon: Icons.policy,
             title: 'Terms of Service',
             onTap: () => context.push('/main/home/terms-of-service'),
+            windowSize: windowSize,
           ),
         ],
       ),
@@ -607,15 +670,26 @@ class _QuickLinksSection extends StatelessWidget {
 
 /// App info section widget
 class _AppInfoSection extends StatelessWidget {
+  final WindowSize windowSize;
+  
+  const _AppInfoSection({required this.windowSize});
+  
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    // Responsive sizing
+    final padding = windowSize.isMicro ? 12.0 : 16.0;
+    final iconSize = windowSize.isMicro ? 48.0 : 60.0;
+    final fallbackIconSize = windowSize.isMicro ? 24.0 : 30.0;
+    final titleFontSize = windowSize.isMicro ? 16.0 : 18.0;
+    final descFontSize = windowSize.isMicro ? 11.0 : 12.0;
 
     return SizedBox(
       width: double.infinity,
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(padding),
           child: Column(
             children: [
               // Use app icon from assets
@@ -623,12 +697,12 @@ class _AppInfoSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   'assets/images/launcher.png',
-                  width: 60,
-                  height: 60,
+                  width: iconSize,
+                  height: iconSize,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      width: 60,
-                      height: 60,
+                      width: iconSize,
+                      height: iconSize,
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -636,16 +710,16 @@ class _AppInfoSection extends StatelessWidget {
                       child: Icon(
                         Icons.school,
                         color: theme.colorScheme.primaryForeground,
-                        size: 30,
+                        size: fallbackIconSize,
                       ),
                     );
                   },
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 AppConstants.appName,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -653,15 +727,18 @@ class _AppInfoSection extends StatelessWidget {
                 style: TextStyle(
                   color: theme.colorScheme.mutedForeground,
                   fontWeight: FontWeight.w500,
+                  fontSize: windowSize.isMicro ? 12.0 : 14.0,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'An Open Source Database for Collaborating at an Institution, Created with <3 by Mantavyam Studios (INDIA) Ltd.',
+                windowSize.isMicro 
+                    ? 'Open Source Database by Mantavyam Studios'
+                    : 'An Open Source Database for Collaborating at an Institution, Created with <3 by Mantavyam Studios (INDIA) Ltd.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: theme.colorScheme.mutedForeground,
-                  fontSize: 12,
+                  fontSize: descFontSize,
                 ),
               ),
             ],
@@ -678,40 +755,53 @@ class _SettingsListTile extends StatelessWidget {
   final String title;
   final String? subtitle;
   final VoidCallback? onTap;
+  final WindowSize windowSize;
 
   const _SettingsListTile({
     required this.icon,
     required this.title,
     this.subtitle,
     this.onTap,
+    required this.windowSize,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    // Responsive sizing
+    final paddingH = windowSize.isMicro ? 12.0 : 16.0;
+    final paddingV = windowSize.isMicro ? 10.0 : 12.0;
+    final iconSize = windowSize.isMicro ? 20.0 : 24.0;
+    final titleFontSize = windowSize.isMicro ? 13.0 : 14.0;
+    final subtitleFontSize = windowSize.isMicro ? 11.0 : 12.0;
+    final iconSpacing = windowSize.isMicro ? 12.0 : 16.0;
 
     return Clickable(
       onPressed: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: paddingH, vertical: paddingV),
         child: Row(
           children: [
-            Icon(icon, color: theme.colorScheme.mutedForeground),
-            const SizedBox(width: 16),
+            Icon(icon, color: theme.colorScheme.mutedForeground, size: iconSize),
+            SizedBox(width: iconSpacing),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: titleFontSize,
+                    ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: subtitleFontSize,
                         color: theme.colorScheme.mutedForeground,
                       ),
                     ),
@@ -719,7 +809,7 @@ class _SettingsListTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.mutedForeground),
+            Icon(Icons.chevron_right, color: theme.colorScheme.mutedForeground, size: iconSize),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/navigation_repository.dart';
@@ -12,6 +13,9 @@ import 'core/services/connectivity_service.dart';
 void main() async {
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
 
   // Configure system UI to show status bar (not full screen)
   SystemChrome.setEnabledSystemUIMode(

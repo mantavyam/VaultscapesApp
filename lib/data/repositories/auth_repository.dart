@@ -89,6 +89,21 @@ class AuthRepository {
     return userWithPrefs;
   }
 
+  /// Sign in with GitHub using Firebase
+  Future<UserModel> signInWithGithub() async {
+    final user = await _firebaseAuthService.signInWithGithub();
+
+    // Clear guest mode flag since user is signing in properly
+    final prefs = await this.prefs;
+    await prefs.remove(_isExplicitGuestKey);
+
+    final homepagePreference = prefs.getString(_homepagePreferenceKey);
+    final userWithPrefs = user.copyWith(homepagePreference: homepagePreference);
+
+    await _saveUser(userWithPrefs);
+    return userWithPrefs;
+  }
+
   /// Perform mock authentication (fallback for testing)
   Future<UserModel> mockAuthenticate({String? name, String? email}) async {
     // Simulate network delay

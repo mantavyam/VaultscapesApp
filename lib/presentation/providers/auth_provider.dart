@@ -163,6 +163,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Sign in with GitHub using Firebase
+  Future<bool> signInWithGithub() async {
+    _state = AuthState.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _user = await _authRepository.signInWithGithub();
+      _state = AuthState.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = AuthState.error;
+      _errorMessage = 'GitHub sign in failed. Please try again.';
+      debugPrint('GitHub sign in error: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Perform mock authentication (fallback for testing)
   Future<bool> mockAuthenticate({String? name, String? email}) async {
     _state = AuthState.loading;

@@ -8,7 +8,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:http/http.dart' as http;
-import 'dart:typed_data';
 
 import '../../../data/services/markdown_parser.dart';
 import '../../../core/services/connectivity_service.dart';
@@ -2192,14 +2191,41 @@ class _EmbedWidgetState extends State<_EmbedWidget> {
       _launchUrl(url);
       return;
     } else {
-      // For other documents (Docs, Sheets, Slides), use WebView dialog
+      // For other documents (Docs, Sheets, Slides), use modal bottom sheet WebView
+      if (!mounted) return;
+
+      final embedType = _getEmbedType(url);
       final interactiveUrl = _getInteractiveUrl(url);
-      setState(() {
-        _showDocumentDialog = true;
-        _showWebView = true;
-        _isLoading = true;
-      });
-      _webViewController.loadRequest(Uri.parse(interactiveUrl));
+
+      material.showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        enableDrag: true,
+        backgroundColor: material.Colors.transparent,
+        builder: (context) => _DocumentBottomSheetViewer(
+          url: interactiveUrl,
+          title: widget.block.caption.isNotEmpty
+              ? widget.block.caption
+              : _getDocumentTypeLabel(embedType),
+          embedType: embedType,
+        ),
+      );
+    }
+  }
+
+  /// Get label for document type
+  String _getDocumentTypeLabel(EmbedType type) {
+    switch (type) {
+      case EmbedType.googleDocs:
+        return 'Google Document';
+      case EmbedType.googleSheets:
+        return 'Google Sheets';
+      case EmbedType.googleSlides:
+        return 'Google Slides';
+      case EmbedType.googleDrive:
+        return 'Google Drive';
+      default:
+        return 'Document';
     }
   }
 
@@ -3971,6 +3997,331 @@ enum EmbedType {
   notion,
   discord,
   other,
+}
+
+/// Modal bottom sheet document viewer for Google Docs/Sheets/Slides
+/// Uses WebView to render the document
+class _DocumentBottomSheetViewer extends StatefulWidget {
+  final String url;
+  final String title;
+  final EmbedType embedType;
+
+  const _DocumentBottomSheetViewer({
+    required this.url,
+    required this.title,
+    required this.embedType,
+  });
+
+  @override
+  State<_DocumentBottomSheetViewer> createState() =>
+      _DocumentBottomSheetViewerState();
+}
+
+class _DocumentBottomSheetViewerState
+    extends State<_DocumentBottomSheetViewer> {
+  late WebViewController _webViewController;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWebView();
+  }
+
+  void _initializeWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..enableZoom(true)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (String url) {
+            if (mounted) {
+              setState(() {
+                _hasError = false;
+                _errorMessage = '';
+                _isLoading = true;
+              });
+            }
+          },
+          onPageFinished: (String url) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
+          },
+          onWebResourceError: (WebResourceError error) {
+            if (mounted) {
+              setState(() {
+                _hasError = true;
+                _errorMessage = error.description;
+                _isLoading = false;
+              });
+            }
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(widget.url));
+  }
+
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Failed to launch URL: $url, error: $e');
+    }
+  }
+
+  IconData _getIcon() {
+    switch (widget.embedType) {
+      case EmbedType.googleDocs:
+        return LucideIcons.fileText;
+      case EmbedType.googleSheets:
+        return LucideIcons.sheet;
+      case EmbedType.googleSlides:
+        return LucideIcons.presentation;
+      case EmbedType.googleDrive:
+        return LucideIcons.folderOpen;
+      default:
+        return LucideIcons.fileText;
+    }
+  }
+
+  Color _getIconColor() {
+    switch (widget.embedType) {
+      case EmbedType.googleDocs:
+        return const Color(0xFF4285F4);
+      case EmbedType.googleSheets:
+        return const Color(0xFF34A853);
+      case EmbedType.googleSlides:
+        return const Color(0xFFFBBC04);
+      case EmbedType.googleDrive:
+        return const Color(0xFF34A853);
+      default:
+        return const Color(0xFF4285F4);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final backgroundColor = isDarkMode
+        ? const Color(0xFF1a1a1a)
+        : const Color(0xFFF5F5F5);
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      height: screenHeight * 0.85,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.white.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDarkMode ? const Color(0xFF2d2d2d) : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Close button
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      LucideIcons.x,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Icon
+                Icon(_getIcon(), size: 20, color: _getIconColor()),
+                const SizedBox(width: 12),
+                // Title
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                // Open in browser button
+                GestureDetector(
+                  onTap: () => _launchUrl(widget.url),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      LucideIcons.externalLink,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Expanded(
+            child: Stack(
+              children: [
+                // WebView
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                  child: WebViewWidget(controller: _webViewController),
+                ),
+                // Loading indicator
+                if (_isLoading)
+                  Container(
+                    color: backgroundColor,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_getIcon(), size: 64, color: _getIconColor()),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: _getIconColor(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Loading document...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                // Error overlay
+                if (_hasError && !_isLoading)
+                  Container(
+                    color: backgroundColor,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              LucideIcons.triangleAlert,
+                              size: 64,
+                              color: theme.colorScheme.destructive,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load document',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.foreground,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: theme.colorScheme.mutedForeground,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlineButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _hasError = false;
+                                      _isLoading = true;
+                                    });
+                                    _webViewController.loadRequest(
+                                      Uri.parse(widget.url),
+                                    );
+                                  },
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(LucideIcons.refreshCw, size: 16),
+                                      SizedBox(width: 8),
+                                      Text('Retry'),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                OutlineButton(
+                                  onPressed: () => _launchUrl(widget.url),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(LucideIcons.externalLink, size: 16),
+                                      SizedBox(width: 8),
+                                      Text('Open in Browser'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Modal bottom sheet PDF viewer covering 85% of screen

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../providers/feedback_provider.dart';
 import '../../../data/models/collaboration_model.dart';
 import '../../../core/services/connectivity_service.dart';
+import '../../../core/responsive/responsive.dart';
 import 'synergy_screen.dart';
 import 'submission_loading_overlay.dart';
 
@@ -47,57 +48,63 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Consumer<FeedbackProvider>(
-      builder: (context, feedbackProvider, child) {
-        return GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: Stack(
-            children: [
-              // Main Form Content
-              SingleChildScrollView(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: FormDimensions.maxFormWidth,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(FormSpacing.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ═══════════════════════════════════════════
-                          // FORM HEADER
-                          // ═══════════════════════════════════════════
-                          _buildFormHeader(theme),
-                          const SizedBox(height: FormSpacing.xxxl),
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        // Responsive form constraints
+        final maxFormWidth = FormDimensions.getMaxFormWidth(windowSize);
+        final formPadding = FormSpacing.responsive(FormSpacing.lg, windowSize);
+        
+        return Consumer<FeedbackProvider>(
+          builder: (context, feedbackProvider, child) {
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Stack(
+                children: [
+                  // Main Form Content
+                  SingleChildScrollView(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: maxFormWidth,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(formPadding),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ═══════════════════════════════════════════
+                              // FORM HEADER
+                              // ═══════════════════════════════════════════
+                              _buildFormHeader(theme),
+                              const SizedBox(height: FormSpacing.xxxl),
 
-                          // ═══════════════════════════════════════════
-                          // SECTION 1: SUBMISSION TYPE
-                          // ═══════════════════════════════════════════
-                          _buildSectionHeader(
-                            theme: theme,
-                            icon: Icons.category_outlined,
-                            title: 'Submission Details',
-                            subtitle: 'What are you sharing with us?',
-                          ),
-                          const SizedBox(height: FormSpacing.lg),
+                              // ═══════════════════════════════════════════
+                              // SECTION 1: SUBMISSION TYPE
+                              // ═══════════════════════════════════════════
+                              _buildSectionHeader(
+                                theme: theme,
+                                icon: Icons.category_outlined,
+                                title: 'Submission Details',
+                                subtitle: 'What are you sharing with us?',
+                              ),
+                              const SizedBox(height: FormSpacing.lg),
 
-                          // Submission Type
-                          _buildCheckboxGroupSection(
-                            theme: theme,
-                            label: 'What are you submitting?',
-                            helperText: 'Select all that apply',
-                            isRequired: true,
-                            errorText: _errors['submissionType'],
-                            child: _buildSubmissionTypeCheckboxGroup(theme),
-                          ),
-                          const SizedBox(height: FormSpacing.md),
+                              // Submission Type
+                              _buildCheckboxGroupSection(
+                                theme: theme,
+                                label: 'What are you submitting?',
+                                helperText: 'Select all that apply',
+                                isRequired: true,
+                                errorText: _errors['submissionType'],
+                                child: _buildSubmissionTypeCheckboxGroup(theme),
+                              ),
+                              const SizedBox(height: FormSpacing.md),
 
-                          // Source Selection
-                          _buildRadioGroupSection(
-                            theme: theme,
-                            label: 'What is the source of your submission?',
-                            isRequired: true,
+                              // Source Selection
+                              _buildRadioGroupSection(
+                                theme: theme,
+                                label: 'What is the source of your submission?',
+                                isRequired: true,
                             errorText: _errors['source'],
                             child: _buildSourceRadioGroup(theme),
                           ),
@@ -267,6 +274,8 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
               ),
             ],
           ),
+        );
+          },
         );
       },
     );
@@ -1432,6 +1441,7 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
     }
 
     // Rate limit check
+    if (!mounted) return;
     final provider = context.read<FeedbackProvider>();
     final canSubmit = await provider.canSubmitCollaboration();
 
@@ -1446,6 +1456,8 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
     // === STRONGER UNFOCUS + LONGER DELAY BEFORE DIALOG ===
     FocusManager.instance.primaryFocus?.unfocus();
     await Future.delayed(const Duration(milliseconds: 400)); // Increased delay
+    
+    if (!mounted) return;
 
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -1470,6 +1482,7 @@ class _CollaborateFormTabState extends State<CollaborateFormTab> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     // === FINAL UNFOCUS + LONGER DELAY BEFORE SUBMISSION ===
     FocusManager.instance.primaryFocus?.unfocus();

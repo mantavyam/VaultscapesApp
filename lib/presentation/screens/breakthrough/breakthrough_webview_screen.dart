@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../../core/constants/url_constants.dart';
 import '../../../core/constants/route_constants.dart';
+import '../../../core/responsive/responsive.dart';
 
 /// Breakthrough WebView screen (formerly Breakthrough.ai) - requires authentication
 class BreakthroughWebViewScreen extends StatefulWidget {
@@ -457,6 +458,20 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
             setState(() {
               _loadingProgress = progress / 100;
             });
+
+            // Safety fallback: If progress reaches 100% but content isn't ready after 3s, force it
+            if (progress >= 100 && !_isContentReady) {
+              Future.delayed(const Duration(milliseconds: 3000), () {
+                if (mounted && !_isContentReady) {
+                  debugPrint(
+                    'WebView: Forcing _isContentReady=true (progress fallback)',
+                  );
+                  setState(() {
+                    _isContentReady = true;
+                  });
+                }
+              });
+            }
           },
           onPageStarted: (String url) {
             debugPrint('WebView onPageStarted: $url');
@@ -464,6 +479,18 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
             setState(() {
               _hasError = false;
               _isContentReady = false;
+            });
+
+            // Safety timeout: If page doesn't finish in 10s, show content anyway
+            Future.delayed(const Duration(seconds: 10), () {
+              if (mounted && !_isContentReady) {
+                debugPrint(
+                  'WebView: Forcing _isContentReady=true (10s timeout)',
+                );
+                setState(() {
+                  _isContentReady = true;
+                });
+              }
             });
           },
           onPageFinished: (String url) async {
@@ -475,21 +502,25 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
             // Apply JavaScript to hide elements based on URL
             if (_isBreakthroughEmailPage(url)) {
               debugPrint('WebView: Running hide elements JS');
-              await _controller!.runJavaScript(_hideEmailElementsJs);
+              try {
+                await _controller!.runJavaScript(_hideEmailElementsJs);
 
-              // Inject user's name and remove logo
-              await _injectUserNameAndRemoveLogo();
+                // Inject user's name and remove logo
+                await _injectUserNameAndRemoveLogo();
 
-              // Apply dark mode if device theme is dark
-              if (isDarkMode) {
-                debugPrint('WebView: Applying dark mode for email content');
-                await _controller!.runJavaScript(_darkModeEmailJs);
+                // Apply dark mode if device theme is dark
+                if (isDarkMode) {
+                  debugPrint('WebView: Applying dark mode for email content');
+                  await _controller!.runJavaScript(_darkModeEmailJs);
+                }
+              } catch (e) {
+                debugPrint('WebView: JS injection error (non-fatal): $e');
               }
             }
 
             // Add extra delay to ensure all injections are fully applied
-            // This prevents users from seeing unprepared content when switching pages quickly
-            await Future.delayed(const Duration(milliseconds: 1500));
+            // But use a shorter delay for first load reliability
+            await Future.delayed(const Duration(milliseconds: 800));
 
             if (!mounted) return;
             debugPrint('WebView: Setting _isContentReady = true');
@@ -498,11 +529,15 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
             });
 
             // Update back navigation state
-            final canGoBack = await _controller!.canGoBack();
-            if (!mounted) return;
-            setState(() {
-              _canGoBack = canGoBack;
-            });
+            try {
+              final canGoBack = await _controller!.canGoBack();
+              if (!mounted) return;
+              setState(() {
+                _canGoBack = canGoBack;
+              });
+            } catch (e) {
+              debugPrint('WebView: canGoBack check error: $e');
+            }
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint(
@@ -537,39 +572,69 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
       final injectionJs =
           '''
         (function() {
-          // Remove Breakthrough logo
-          var logos = document.querySelectorAll('img[alt="Breakthrough Logo"]');
-          logos.forEach(function(logo) {
-            logo.style.display = 'none';
-            // Also hide the divider after logo if exists
-            var nextEl = logo.nextElementSibling;
-            if (nextEl && nextEl.tagName === 'TABLE') {
-              nextEl.style.display = 'none';
-            }
+          // Remove AlphaSignal/Breakthrough logo
+          var logoSelectors = [
+            'img[alt="Breakthrough Logo"]',
+            'img[alt="AlphaSignal Logo"]',
+            'img[src*="alphasignal.ai/image"]',
+            'img[src*="1764279764256"]'
+          ];
+          
+          logoSelectors.forEach(function(selector) {
+            var logos = document.querySelectorAll(selector);
+            logos.forEach(function(logo) {
+              logo.style.display = 'none';
+              // Also hide the divider/table after logo if exists
+              var nextEl = logo.nextElementSibling;
+              if (nextEl && (nextEl.tagName === 'TABLE' || nextEl.tagName === 'HR')) {
+                nextEl.style.display = 'none';
+              }
+              // Hide parent cell/table if it only contains the logo
+              var parent = logo.parentElement;
+              if (parent && parent.children.length === 1) {
+                parent.style.display = 'none';
+              }
+            });
           });
           
-          // Try to access iframe and inject user name
+          // Try to access iframe and inject user name / remove logo
           var iframes = document.querySelectorAll('iframe');
           iframes.forEach(function(iframe) {
             try {
               var iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
               if (iframeDoc) {
-                // Remove logo in iframe
-                var iframeLogos = iframeDoc.querySelectorAll('img[alt="Breakthrough Logo"]');
-                iframeLogos.forEach(function(logo) {
-                  logo.style.display = 'none';
-                  var nextEl = logo.nextElementSibling;
-                  if (nextEl && nextEl.tagName === 'TABLE') {
-                    nextEl.style.display = 'none';
+                // Remove logo in iframe with multiple selectors
+                logoSelectors.forEach(function(selector) {
+                  var iframeLogos = iframeDoc.querySelectorAll(selector);
+                  iframeLogos.forEach(function(logo) {
+                    logo.style.display = 'none';
+                    var nextEl = logo.nextElementSibling;
+                    if (nextEl && (nextEl.tagName === 'TABLE' || nextEl.tagName === 'HR')) {
+                      nextEl.style.display = 'none';
+                    }
+                    // Hide parent if only contains logo
+                    var parent = logo.parentElement;
+                    if (parent && parent.children.length === 1) {
+                      parent.style.display = 'none';
+                    }
+                  });
+                });
+                
+                // Also hide the white divider table after logo
+                var dividerTables = iframeDoc.querySelectorAll('table[style*="margin:0 0 20px"]');
+                dividerTables.forEach(function(table) {
+                  var prevEl = table.previousElementSibling;
+                  if (prevEl && prevEl.tagName === 'IMG') {
+                    table.style.display = 'none';
                   }
                 });
                 
                 // Inject user's name
-                var greetings = iframeDoc.querySelectorAll('p');
-                greetings.forEach(function(p) {
-                  var text = p.textContent || '';
+                var greetings = iframeDoc.querySelectorAll('p, td, span');
+                greetings.forEach(function(el) {
+                  var text = el.textContent || '';
                   if (text.indexOf('{{FIRSTNAME}}') !== -1 || text.indexOf('Hey {{FIRSTNAME}}') !== -1) {
-                    p.innerHTML = p.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
+                    el.innerHTML = el.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
                   }
                 });
               }
@@ -579,11 +644,11 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
           });
           
           // Also try direct replacement in main document
-          var mainGreetings = document.querySelectorAll('p');
-          mainGreetings.forEach(function(p) {
-            var text = p.textContent || '';
+          var mainGreetings = document.querySelectorAll('p, td, span');
+          mainGreetings.forEach(function(el) {
+            var text = el.textContent || '';
             if (text.indexOf('{{FIRSTNAME}}') !== -1) {
-              p.innerHTML = p.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
+              el.innerHTML = el.innerHTML.replace(/{{FIRSTNAME}}/g, '$userName');
             }
           });
           
@@ -804,64 +869,128 @@ class _BreakthroughWebViewScreenState extends State<BreakthroughWebViewScreen> {
     );
   }
 
-  /// Build authentication barrier widget
+  /// Build authentication barrier widget with responsive layout
   Widget _buildAuthBarrier(BuildContext context, ThemeData theme) {
-    return Scaffold(
-      headers: [AppBar(title: const Text('Latest in AI'))],
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Lock icon
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.lock_outline,
-                  size: 64,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Title
-              Text(
-                'Exclusive Content',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.foreground,
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Description
-              Text(
-                'Sign in to access the latest AI briefings and archive. Stay ahead with daily curated AI news, models, papers, and repositories.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: theme.colorScheme.mutedForeground,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Sign in button
-              PrimaryButton(
-                onPressed: () {
-                  // Navigate to profile tab to trigger auth
-                  // Or show auth dialog directly
-                  _showAuthPrompt(context);
-                },
-                child: const Text('Sign Up / Login to proceed'),
-              ),
-            ],
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        // Responsive sizing based on viewport
+        final isCompressed = windowSize.height < 480;
+        final padding = windowSize.isMicro ? 24.0 : 32.0;
+        final iconContainerSize = windowSize.isMicro ? 96.0 : 120.0;
+        final iconSize = windowSize.isMicro ? 48.0 : 64.0;
+        final titleFontSize = windowSize.isMicro ? 20.0 : 24.0;
+        final descFontSize = windowSize.isMicro ? 14.0 : 16.0;
+        final buttonHeight = windowSize.isMicro ? 44.0 : 48.0;
+        
+        return Scaffold(
+          headers: [AppBar(title: const Text('Latest in AI'))],
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Use scroll for compressed heights
+                if (isCompressed) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: _buildAuthBarrierContent(
+                        theme,
+                        iconContainerSize,
+                        iconSize,
+                        titleFontSize,
+                        descFontSize,
+                        buttonHeight,
+                      ),
+                    ),
+                  );
+                }
+                
+                // Center content for normal heights
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(padding),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: _buildAuthBarrierContent(
+                        theme,
+                        iconContainerSize,
+                        iconSize,
+                        titleFontSize,
+                        descFontSize,
+                        buttonHeight,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  /// Build auth barrier content widgets (reusable for both layouts)
+  List<Widget> _buildAuthBarrierContent(
+    ThemeData theme,
+    double iconContainerSize,
+    double iconSize,
+    double titleFontSize,
+    double descFontSize,
+    double buttonHeight,
+  ) {
+    return [
+      // Lock icon
+      Container(
+        width: iconContainerSize,
+        height: iconContainerSize,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.lock_outline,
+          size: iconSize,
+          color: theme.colorScheme.primary,
         ),
       ),
-    );
+      const SizedBox(height: 24),
+      // Title
+      Text(
+        'Exclusive Content',
+        style: TextStyle(
+          fontSize: titleFontSize,
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.foreground,
+        ),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 12),
+      // Description
+      Text(
+        'Sign in to access the latest AI briefings and archive. Stay ahead with daily curated AI news, models, papers, and repositories.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: descFontSize,
+          color: theme.colorScheme.mutedForeground,
+          height: 1.5,
+        ),
+      ),
+      const SizedBox(height: 32),
+      // Sign in button
+      SizedBox(
+        width: double.infinity,
+        height: buttonHeight,
+        child: PrimaryButton(
+          onPressed: () {
+            // Navigate to profile tab to trigger auth
+            // Or show auth dialog directly
+            _showAuthPrompt(context);
+          },
+          child: const Text('Sign Up / Login to proceed'),
+        ),
+      ),
+    ];
   }
 
   /// Show authentication prompt - navigates to welcome screen

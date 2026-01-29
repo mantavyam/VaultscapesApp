@@ -1,6 +1,7 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/feedback_provider.dart';
+import '../../../core/responsive/responsive.dart';
 import 'synergy_screen.dart';
 
 /// Type of submission for the success screen
@@ -80,73 +81,77 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
     // Using same blue color for both as per requirement
     const accentColor = Color(0xFF0EA5E9);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          widget.onDone();
-        }
-      },
-      child: Scaffold(
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Padding(
-                padding: const EdgeInsets.all(FormSpacing.xl),
+    return ResponsiveBuilder(
+      builder: (context, windowSize) {
+        // Responsive sizing
+        final padding = FormSpacing.responsive(FormSpacing.xl, windowSize);
+        final outerCircleSize = windowSize.isMicro ? 96.0 : 120.0;
+        final innerCircleSize = windowSize.isMicro ? 64.0 : 80.0;
+        final checkIconSize = windowSize.isMicro ? 36.0 : 44.0;
+        
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) {
+              widget.onDone();
+            }
+          },
+          child: Scaffold(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(padding),
                 child: AnimatedBuilder(
                   animation: _controller,
                   builder: (context, child) {
                     return Opacity(
                       opacity: _fadeAnimation.value,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Success Icon with animation
-                            Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: accentColor.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                                // Success Icon with animation
+                                Transform.scale(
+                                  scale: _scaleAnimation.value,
                                   child: Container(
-                                    width: 80,
-                                    height: 80,
+                                    width: outerCircleSize,
+                                    height: outerCircleSize,
                                     decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          accentColor,
-                                          accentColor.withValues(alpha: 0.8),
-                                        ],
-                                      ),
+                                      color: accentColor.withValues(alpha: 0.1),
                                       shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: accentColor.withValues(
-                                            alpha: 0.3,
-                                          ),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 8),
-                                        ),
-                                      ],
                                     ),
-                                    child: const Icon(
-                                      Icons.check_rounded,
-                                      size: 44,
-                                      color: Colors.white,
+                                    child: Center(
+                                      child: Container(
+                                        width: innerCircleSize,
+                                        height: innerCircleSize,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              accentColor,
+                                              accentColor.withValues(alpha: 0.8),
+                                            ],
+                                          ),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: accentColor.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              blurRadius: 20,
+                                              offset: const Offset(0, 8),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          Icons.check_rounded,
+                                          size: checkIconSize,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: FormSpacing.xxl),
+                                SizedBox(height: FormSpacing.responsive(FormSpacing.xxl, windowSize)),
 
                             // Title
                             Text(
@@ -374,15 +379,14 @@ class _SubmissionSuccessScreenState extends State<SubmissionSuccessScreen>
                             ),
                           ],
                         ),
-                      ),
-                    );
+                      );
                   },
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

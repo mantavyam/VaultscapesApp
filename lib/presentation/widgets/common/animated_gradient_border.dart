@@ -136,8 +136,6 @@ class _AnimatedConicGradientBorderState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     // Default gradient colors - blue shades with white accents
     final colors =
         widget.gradientColors ??

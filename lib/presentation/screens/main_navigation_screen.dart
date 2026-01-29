@@ -8,6 +8,7 @@ import 'home/root_homepage_screen.dart';
 import 'breakthrough/breakthrough_webview_screen.dart';
 import 'synergy/synergy_screen.dart';
 import 'profile/profile_screen.dart';
+import '../../core/responsive/responsive.dart';
 
 /// Main navigation screen with bottom navigation bar
 /// Swipe navigation is disabled on Breakthrough (index 1) only for authenticated users
@@ -115,21 +116,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     await _onWillPop();
                   }
                 },
-                child: Scaffold(
-                  footers: [
-                    CustomBottomNavBar(
-                      currentIndex: _currentIndex,
-                      onTap: _onTabChanged,
-                    ),
-                  ],
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    physics: shouldDisableSwipe
-                        ? const NeverScrollableScrollPhysics()
-                        : const PageScrollPhysics(),
-                    children: _screens,
-                  ),
+                child: ResponsiveBuilder(
+                  builder: (context, windowSize) {
+                    // Disable swipe in micro viewports for better usability
+                    final disableSwipeForViewport =
+                        ResponsiveLayout.shouldDisablePageSwipe(context);
+
+                    return Scaffold(
+                      footers: [
+                        CustomBottomNavBar(
+                          currentIndex: _currentIndex,
+                          onTap: _onTabChanged,
+                        ),
+                      ],
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        physics: shouldDisableSwipe || disableSwipeForViewport
+                            ? const NeverScrollableScrollPhysics()
+                            : const PageScrollPhysics(),
+                        children: _screens,
+                      ),
+                    );
+                  },
                 ),
               );
             },
